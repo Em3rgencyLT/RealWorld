@@ -28,16 +28,39 @@ public class Structure : MonoBehaviour
  
         Vector3[] vertices = new Vector3[vertices2DArray.Length];
         for (int i=0; i<vertices.Length; i++) {
-            vertices[i] = new Vector3(vertices2D[i].x, 0, vertices2D[i].y);
+            vertices[i] = new Vector3(vertices2D[i].x, 5f, vertices2D[i].y);
+        }
+
+        List<Vector3> vertexList = vertices.ToList();
+        List<int> indexList = indices.ToList();
+
+        vertices2D.ForEach(vertex => {
+            vertexList.Add(new Vector3(vertex.x, 0f, vertex.y));
+        });
+
+        for (int i=0; i<vertices2D.Count; i++) {
+            indexList.Add(i);
+            indexList.Add(i + vertices2D.Count);
+            if(i == vertices2D.Count - 1) {
+                indexList.Add(vertices2D.Count);
+                indexList.Add(vertices2D.Count);
+            } else {
+                indexList.Add(i + vertices2D.Count + 1);
+                indexList.Add(i + vertices2D.Count + 1);
+            }
+            indexList.Add((i + 1) % vertices2D.Count);
+            indexList.Add(i);
         }
  
         Mesh mesh = new Mesh();
-        mesh.vertices = vertices;
-        mesh.triangles = indices;
+        mesh.vertices = vertexList.ToArray();
+        mesh.triangles = indexList.ToArray();
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
  
         MeshFilter filter = gameObject.GetComponent<MeshFilter>();
         filter.mesh = mesh;
+        MeshRenderer renderer = gameObject.GetComponent<MeshRenderer>();
+        renderer.material = new Material(Shader.Find("Diffuse"));
     }
 }
