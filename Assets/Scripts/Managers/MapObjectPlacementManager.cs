@@ -54,13 +54,12 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
                 mapElement.References.ForEach(reference => {
                     verticePositions.Add(worldData[reference].Coordinates.Position);
                 });
-                verticePositions.RemoveAt(verticePositions.Count - 1);
-
-                if(verticePositions.Count > 2) {
+                if(verticePositions.Count > 3) {
+                    verticePositions.RemoveAt(verticePositions.Count - 1);
                     GameObject structureObject = Instantiate(structurePrefab, Vector3.zero, Quaternion.identity);
                     structureObject.name = string.IsNullOrWhiteSpace(mapElement.GetAddress()) ? "Building" : mapElement.GetAddress();
                     Structure structureScript = structureObject.GetComponent<Structure>();
-                    structureScript.Build(mapElement.Id, verticePositions);
+                    structureScript.Build(mapElement, verticePositions);
                     structureObject.transform.parent = structureParent.transform;
                     built++;
                 }
