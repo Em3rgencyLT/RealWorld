@@ -40,7 +40,7 @@ public static class CoordinateMath
     }
 
     public static Vector3 CoordinatesToWorldPosition(Coordinates target) {
-        Coordinates origin = MapObjectPlacementManager.Instance.GetWorldOrigin();
+        Coordinates origin = MapObjectPlacementManager.Instance.ProjectionOrigin;
         double x = (target.Longitude - origin.Longitude) * (ToRadian(EARTH_RADIUS_KILOMETERS) * Math.Cos(ToRadian(target.Latitude))) * 1000;
         double y = (target.Latitude - origin.Latitude) * ToRadian(EARTH_RADIUS_KILOMETERS) * 1000;
 

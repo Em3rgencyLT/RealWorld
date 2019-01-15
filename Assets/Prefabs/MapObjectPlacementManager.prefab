@@ -43,9 +43,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fa3925232560ec748b6f2db2dbb32fb1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  startLatitude: 55.243727
-  startLongitude: 22.28547
-  offset: 0.015
+  originLatitude: 55.237884
+  originLongitude: 22.276198
+  offset: 0.03
   structurePrefab: {fileID: 2284788899354435232, guid: d05cb60e6c65d7a4aa066e3d52cefe50,
     type: 3}
   structureParentPrefab: {fileID: 5043443604074025209, guid: bf101f8d5714ee841ad6dd60ee2ad4ec,

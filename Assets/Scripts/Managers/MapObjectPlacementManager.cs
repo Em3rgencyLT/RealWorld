@@ -9,44 +9,42 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
     protected MapObjectPlacementManager() { }
 
     [SerializeField]
-    private double startLatitude = 55.243727;
+    private double originLatitude = 55.237884;
     [SerializeField]
-    private double startLongitude = 22.285470;
-    private Coordinates origin;
+    private double originLongitude = 22.276198;
     private Coordinates projectionOrigin;
     [SerializeField]
-    private double offset = 0.015;
+    private double offset = 0.03;
 
     private Coordinates bottomCoordinates;
     private Coordinates topCoordinates;
     private Dictionary<MapElement.ID, MapElement> worldData;
     
     public GameObject structurePrefab;
-    public GameObject structureParentPrefab;
+    private GameObject structureParentObject;
 
-    public Coordinates GetWorldOrigin() { return projectionOrigin; }
-    public Dictionary<MapElement.ID, MapElement> WorldData { get { return worldData; } }
-
-    // Start is called before the first frame update
-    void Awake()
-    {
-        //FIXME: this must be calculated before all other coordinates, or shit breaks
-        this.projectionOrigin = Coordinates.of(startLatitude - offset*0.89, startLongitude - offset*1.55);
-
-        this.origin = Coordinates.of(startLatitude, startLongitude);
-        this.topCoordinates = Coordinates.of(origin.Latitude + offset*0.89, origin.Longitude + offset*1.55);
-        this.bottomCoordinates = projectionOrigin;
-
-        worldData = MapData.GetData(bottomCoordinates, topCoordinates);
+    public double OriginLongitude { get { return originLongitude; } }
+    public double OriginLatitude { get { return originLatitude; } }
+    public Coordinates ProjectionOrigin { 
+        get { return projectionOrigin; } 
+        //TODO: setting the projection origin to something else should also wipe and redraw the entire world
+        set { this.projectionOrigin = value; }
     }
 
+    public Dictionary<MapElement.ID, MapElement> WorldData { get { return worldData; } }
+
     void Start() {
+        this.topCoordinates = Coordinates.of(OriginLatitude + offset*0.89, OriginLongitude + offset*1.55);
+        this.bottomCoordinates = ProjectionOrigin;
+
+        this.worldData = MapData.GetData(bottomCoordinates, topCoordinates);
+
         StartCoroutine("PlaceBuildings");
     }
 
     private IEnumerator PlaceBuildings() {
         int built = 0;
-        GameObject structureParent = Instantiate(structureParentPrefab, Vector3.zero, Quaternion.identity);
+        this.structureParentObject = new GameObject("Structures");
         foreach (MapElement mapElement in worldData.Values)
         {
             if(mapElement.Data.ContainsKey(MapNodeKey.KeyType.Building)) {
@@ -60,7 +58,7 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
                     structureObject.name = string.IsNullOrWhiteSpace(mapElement.GetAddress()) ? "Building" : mapElement.GetAddress();
                     Structure structureScript = structureObject.GetComponent<Structure>();
                     structureScript.Build(mapElement, verticePositions);
-                    structureObject.transform.parent = structureParent.transform;
+                    structureObject.transform.parent = structureParentObject.transform;
                     built++;
                 }
                 
@@ -71,11 +69,5 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
         }
 
         yield return null;
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
     }
 }
