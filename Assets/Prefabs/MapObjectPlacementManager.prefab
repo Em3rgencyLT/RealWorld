@@ -48,5 +48,5 @@ MonoBehaviour:
   offset: 0.03
   structurePrefab: {fileID: 2284788899354435232, guid: d05cb60e6c65d7a4aa066e3d52cefe50,
     type: 3}
-  structureParentPrefab: {fileID: 5043443604074025209, guid: bf101f8d5714ee841ad6dd60ee2ad4ec,
+  roadPrefab: {fileID: 7443854564909447544, guid: 3763ae7822541564c91a56834775504f,
     type: 3}

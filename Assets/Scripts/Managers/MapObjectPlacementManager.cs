@@ -21,7 +21,9 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
     private Dictionary<MapElement.ID, MapElement> worldData;
     
     public GameObject structurePrefab;
+    public GameObject roadPrefab;
     private GameObject structureParentObject;
+    private GameObject roadParentObject;
 
     public double OriginLongitude { get { return originLongitude; } }
     public double OriginLatitude { get { return originLatitude; } }
@@ -40,6 +42,7 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
         this.worldData = MapData.GetData(bottomCoordinates, topCoordinates);
 
         StartCoroutine("PlaceBuildings");
+        StartCoroutine("PlaceRoads");
     }
 
     private IEnumerator PlaceBuildings() {
@@ -65,6 +68,64 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
                 if(built % 100 == 0) {
                     yield return null;
                 }
+            }
+        }
+
+        yield return null;
+    }
+
+    private IEnumerator PlaceRoads() {
+        int built = 0;
+        this.roadParentObject = new GameObject("Roads");
+        foreach (MapElement mapElement in worldData.Values)
+        {
+            if(!mapElement.Data.ContainsKey(MapNodeKey.KeyType.Highway)) {
+                continue;
+            }
+
+            List<Coordinates> waypoints = new List<Coordinates>();
+            mapElement.References
+            .ForEach(reference => {
+                waypoints.Add(worldData[reference].Coordinates);
+            });
+
+            List<Vector3> leftVerticePositions = new List<Vector3>();
+            List<Vector3> rightVerticePositions = new List<Vector3>();
+            float width = Road.GuessRoadWidth(mapElement.Data[MapNodeKey.KeyType.Highway]);
+
+            waypoints
+            .ForEach(waypoint => {
+                int index = waypoints.IndexOf(waypoint);
+                Vector3 forward = Vector3.zero;
+                    
+                if(index < waypoints.Count - 1) {
+                    forward += waypoints[index + 1].Position - waypoint.Position; 
+                }
+                if(index > 0) { 
+                    forward += waypoint.Position - waypoints[index - 1].Position; 
+                }
+
+                forward.Normalize();
+                Vector3 left = new Vector3(-forward.z, 0f, forward.x);                       
+                leftVerticePositions.Add(waypoint.Position + left * width);
+                rightVerticePositions.Add(waypoint.Position - left * width);
+            });
+
+            if(leftVerticePositions.Count > 1 && rightVerticePositions.Count > 1) {
+                GameObject roadObject = Instantiate(roadPrefab, Vector3.zero, Quaternion.identity);
+                roadObject.name = string.IsNullOrWhiteSpace(mapElement.GetRoadName()) ? "Road" : mapElement.GetRoadName();
+                Road roadScript = roadObject.GetComponent<Road>();
+                List<Vector3> verticePositions = new List<Vector3>();
+                verticePositions.AddRange(leftVerticePositions);
+                rightVerticePositions.Reverse();
+                verticePositions.AddRange(rightVerticePositions);
+                roadScript.Build(mapElement, verticePositions);
+                roadObject.transform.parent = roadParentObject.transform;
+                built++;
+            }
+                
+            if(built % 100 == 0) {
+                yield return null;
             }
         }
 

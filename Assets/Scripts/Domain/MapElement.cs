@@ -49,6 +49,13 @@ namespace Domain {
             return street + " " + houseNumber;
         }
 
+        public string GetRoadName() {
+            string type = Data.ContainsKey(MapNodeKey.KeyType.Highway) ? Data[MapNodeKey.KeyType.Highway] : "";
+            string name = Data.ContainsKey(MapNodeKey.KeyType.Name) ? Data[MapNodeKey.KeyType.Name] : "";
+
+            return type.Capitalise() + (name.Length > 0 ? " " + name : "");
+        }
+
         public void MarkBuilt() {
             if(this.isBuilt) {
                 throw new Exception(this.id.Id.ToString() + " tried to mark as built when already built!");

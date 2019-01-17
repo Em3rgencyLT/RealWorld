@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Domain;
 using UnityEngine;
 
@@ -45,5 +46,10 @@ public static class CoordinateMath
         double y = (target.Latitude - origin.Latitude) * ToRadian(EARTH_RADIUS_KILOMETERS) * 1000;
 
         return new Vector3((float)x, 0f, (float)y);
+    }
+
+    public static List<Coordinates> OrderPointsByCoordinates(List<Coordinates> points) {
+        points.Sort((a, b) => Comparer<double>.Default.Compare(a.Latitude + a.Longitude, b.Latitude + b.Longitude));
+        return points;
     }
 }
