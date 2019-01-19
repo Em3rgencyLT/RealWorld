@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Domain;
+using Utility;
 
 public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
 {
@@ -106,9 +107,17 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
                 }
 
                 forward.Normalize();
+                Vector3 position = waypoint.Position;
+                if(index == 0) {
+                    position -= forward * width / 10;
+                }
+                if(index == waypoints.Count - 1) {
+                    position += forward * width / 10;
+                }
+
                 Vector3 left = new Vector3(-forward.z, 0f, forward.x);                       
-                leftVerticePositions.Add(waypoint.Position + left * width);
-                rightVerticePositions.Add(waypoint.Position - left * width);
+                leftVerticePositions.Add(position + left * width);
+                rightVerticePositions.Add(position - left * width);
             });
 
             if(leftVerticePositions.Count > 1 && rightVerticePositions.Count > 1) {

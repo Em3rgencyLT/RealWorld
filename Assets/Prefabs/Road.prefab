@@ -45,6 +45,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b6686b27b23b1304db71a9fe46d8be45, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  baseVerticePositions: []
+  testMaterial: {fileID: 2100000, guid: 76ff537c8e1a84345868e6aeee938ab3, type: 2}
 --- !u!33 &1489374205744235713
 MeshFilter:
   m_ObjectHideFlags: 0

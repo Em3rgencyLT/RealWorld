@@ -3,43 +3,26 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Domain;
+using Utility;
 
 [RequireComponent(typeof(MeshRenderer), typeof(MeshFilter))]
-public class Road : MonoBehaviour
+public class Road : MapObject
 {
-    [SerializeField]
-    private MapElement.ID mapId;
-    [SerializeField]
-    private List<Vector3> baseVerticePositions;
-
     public void Build(MapElement mapElement, List<Vector3> baseVerticePositions) {
         this.mapId = mapElement.Id;
         this.baseVerticePositions = baseVerticePositions;
 
+        List<Vector3> vertices = new List<Vector3>();
         List<Vector2> vertices2D = new List<Vector2>();
-        baseVerticePositions
-            .ForEach(position => {
-                vertices2D.Add(new Vector2(position.x, position.z));
-            });
+        baseVerticePositions.ForEach(position => {
+            vertices.Add(new Vector3(position.x, 0f, position.z));
+            vertices2D.Add(new Vector2(position.x, position.z));
+        });
 
-        Triangulator tr = new Triangulator(vertices2D);
-        int[] indices = tr.Triangulate();
- 
-        Vector3[] vertices = new Vector3[vertices2D.Count];
-        for (int i=0; i<vertices.Length; i++) {
-            vertices[i] = new Vector3(vertices2D[i].x, 0f, vertices2D[i].y);
-        }
- 
-        Mesh mesh = new Mesh();
-        mesh.vertices = vertices;
-        mesh.triangles = indices;
-        mesh.RecalculateNormals();
-        mesh.RecalculateBounds();
- 
-        MeshFilter filter = gameObject.GetComponent<MeshFilter>();
-        filter.mesh = mesh;
-        MeshRenderer renderer = gameObject.GetComponent<MeshRenderer>();
-        renderer.material = new Material(Shader.Find("Diffuse"));
+        GameObject meshParent = new GameObject("Mesh");
+        meshParent.transform.parent = transform;
+
+        MakePlane(vertices, vertices2D, "Surface").transform.parent = meshParent.transform;
     }
 
     public static float GuessRoadWidth(string type) {

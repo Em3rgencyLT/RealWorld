@@ -1,93 +1,85 @@
-﻿using System.Collections;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Domain;
+using Utility;
 
-[RequireComponent(typeof(MeshRenderer), typeof(MeshFilter))]
-public class Structure : MonoBehaviour
+public class Structure : MapObject
 {
-    [SerializeField]
-    private MapElement.ID mapId;
-    [SerializeField]
-    private List<Vector3> baseVerticePositions;
-
     public void Build(MapElement mapElement, List<Vector3> baseVerticePositions) {
         this.mapId = mapElement.Id;
         this.baseVerticePositions = baseVerticePositions;
 
-        List<Vector2> vertices2D = new List<Vector2>();
-        baseVerticePositions
-            .ForEach(position => {
-                vertices2D.Add(new Vector2(position.x, position.z));
-            });
-
-        Triangulator tr = new Triangulator(vertices2D);
-        int[] indices = tr.Triangulate();
- 
-        Vector3[] vertices = new Vector3[vertices2D.Count];
-        float height = GuessBuildingHeight(mapElement.Data[MapNodeKey.KeyType.Building]);
-        for (int i=0; i<vertices.Length; i++) {
-            vertices[i] = new Vector3(vertices2D[i].x, height, vertices2D[i].y);
+        if(baseVerticePositions.Count < 3) {
+            throw new ArgumentException("Can't built a structure with less than 3 vertices at it's base!");
         }
 
-        List<Vector3> vertexList = vertices.ToList();
-        List<int> indexList = indices.ToList();
+        GameObject meshParent = new GameObject("Mesh");
+        meshParent.transform.parent = transform;
 
-        float area = Triangulator.Area(vertices2D);
-        vertices2D.ForEach(vertex => {
-            vertexList.Add(new Vector3(vertex.x, 0f, vertex.y));
+        float height = GuessBuildingHeight(mapElement.Data[MapNodeKey.KeyType.Building]);
+        List<Vector3> verticesTop = new List<Vector3>();
+        baseVerticePositions.ForEach(position => {
+            verticesTop.Add(new Vector3(position.x, height, position.z));
         });
 
-        //FIXME: techdebt and lazyness
-        if(area < 0) {
-            for (int i=0; i<vertices2D.Count; i++) {
-                if(i == vertices2D.Count - 1) {
-                    indexList.Add(i);
-                    indexList.Add(i + vertices2D.Count);
-                    indexList.Add(vertices2D.Count);
-                    indexList.Add(vertices2D.Count);
-                    indexList.Add((i + 1) % vertices2D.Count);
-                    indexList.Add(i);
-                } else {
-                    indexList.Add(i);
-                    indexList.Add(i + vertices2D.Count);
-                    indexList.Add(i + vertices2D.Count + 1);
-                    indexList.Add(i + vertices2D.Count + 1);
-                    indexList.Add((i + 1) % vertices2D.Count);
-                    indexList.Add(i);
-                }
+       MakeRoof(verticesTop).transform.parent = meshParent.transform;
+       MakeWalls(verticesTop).ForEach(wall => {
+           wall.transform.parent = meshParent.transform;
+       });
+    }
+
+    private GameObject MakeRoof(List<Vector3> vertices) {
+        List<Vector2> vertices2D = new List<Vector2>();
+        vertices.ForEach(position => {
+            vertices2D.Add(new Vector2(position.x, position.z));
+        });
+
+        return MakePlane(vertices, vertices2D, "Roof");
+    }
+
+    private List<GameObject> MakeWalls(List<Vector3> vertices) {
+        List<GameObject> walls = new List<GameObject>();
+        List<Vector2> vertices2D = new List<Vector2>();
+
+        vertices.ForEach(vertex => {
+            vertices2D.Add(new Vector2(vertex.x, vertex.z));
+        });
+
+        for(int i = 0; i < vertices.Count; i++) {
+            int i0 = i;
+            int i1 = i + 1;
+
+            if(i == vertices.Count - 1) {
+                i1 = 0;
             }
-        } else {
-            for (int i=0; i<vertices2D.Count; i++) {
-                if(i == vertices2D.Count - 1) {
-                    indexList.Add(vertices2D.Count);
-                    indexList.Add(i + vertices2D.Count);
-                    indexList.Add(i);
-                    indexList.Add(i);
-                    indexList.Add((i + 1) % vertices2D.Count);
-                    indexList.Add(vertices2D.Count);
-                } else {
-                    indexList.Add(i + vertices2D.Count + 1);
-                    indexList.Add(i + vertices2D.Count);
-                    indexList.Add(i);
-                    indexList.Add(i);
-                    indexList.Add((i + 1) % vertices2D.Count);
-                    indexList.Add(i + vertices2D.Count + 1);
-                }
+
+            //Actual 3d position of each vertex
+            List<Vector3> wallVertices = new List<Vector3>();
+            wallVertices.Add(vertices[i0]);
+            wallVertices.Add(vertices[i1]);
+            wallVertices.Add(new Vector3(vertices[i1].x, 0f, vertices[i1].z));
+            wallVertices.Add(new Vector3(vertices[i0].x, 0f, vertices[i0].z));
+            
+            //Dummy data, but in correct order and relative position. Which is all that matters for texture mapping.
+            List<Vector2> relativeVertices = new List<Vector2>();
+            if(Triangulator.Area(vertices2D) > 0) {
+                relativeVertices.Add(new Vector2(0f, 1f));
+                relativeVertices.Add(new Vector2(1f, 1f));
+                relativeVertices.Add(new Vector2(1f, 0f));
+                relativeVertices.Add(new Vector2(0f, 0f));
+            } else {
+                relativeVertices.Add(new Vector2(0f, 1f));
+                relativeVertices.Add(new Vector2(0f, 0f));
+                relativeVertices.Add(new Vector2(1f, 0f));
+                relativeVertices.Add(new Vector2(1f, 1f));
             }
+
+            walls.Add(MakePlane(wallVertices, relativeVertices, "Wall"));
         }
- 
-        Mesh mesh = new Mesh();
-        mesh.vertices = vertexList.ToArray();
-        mesh.triangles = indexList.ToArray();
-        mesh.RecalculateNormals();
-        mesh.RecalculateBounds();
- 
-        MeshFilter filter = gameObject.GetComponent<MeshFilter>();
-        filter.mesh = mesh;
-        MeshRenderer renderer = gameObject.GetComponent<MeshRenderer>();
-        renderer.material = new Material(Shader.Find("Diffuse"));
+        
+        return walls;
     }
 
     private float GuessBuildingHeight(string type) {
