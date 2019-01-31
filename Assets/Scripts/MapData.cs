@@ -1,22 +1,30 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Net;
-using System.IO;
 using System.Xml.Linq;
 using System.Linq;
+using Newtonsoft.Json.Linq;
 using UnityEngine;
 using Domain;
+using Utility;
+using SRTM;
 
 public class MapData
 {
     private const string MAP_DATA_API_URL = @"https://overpass-api.de/api/map?bbox=";
+    private const string ELEVATION_DATA_API_URL = @"https://elevation-api.io/api/elevation?key=J88csE3kf1agWKd0m4IdJ6rq754V76&points=";
 
-    public static Dictionary<MapElement.ID, MapElement> GetData(Coordinates bottomCoordinates, Coordinates topCoordinates) {
-        Debug.Log("Requesting map data...");
-        XElement rawMapData = MakeHTTPRequest(bottomCoordinates, topCoordinates);
+    public static Dictionary<Coordinates, double> GetElevationData(Coordinates bottomCoordinates, Coordinates topCoordinates) {
+        Debug.Log("Requesting elevation data...");
+        Dictionary<Coordinates, double> elevationData = GetRawElevationData(bottomCoordinates, topCoordinates);
+
+        return elevationData;
+    }
+
+    public static Dictionary<MapElement.ID, MapElement> GetObjectData(Coordinates bottomCoordinates, Coordinates topCoordinates) {
+        Debug.Log("Requesting map object data...");
+        XElement rawMapData = GetRawMapData(bottomCoordinates, topCoordinates);
         Dictionary<MapElement.ID, MapElement> mapData = new Dictionary<MapElement.ID, MapElement>();
 
-        Debug.Log("Parsing values...");
         mapData = ParseNodes(ref rawMapData);
         mapData = mapData.Concat(ParseWays(ref rawMapData)).ToDictionary(x => x.Key, x=> x.Value);
         //TODO: Parse relations
@@ -109,23 +117,32 @@ public class MapData
         return data;
     }
 
-    private static XElement MakeHTTPRequest(Coordinates bottomCoordinates, Coordinates topCoordinates) {
-        string xml = string.Empty;
+    private static XElement GetRawMapData(Coordinates bottomCoordinates, Coordinates topCoordinates) {
         string url = MAP_DATA_API_URL + 
         bottomCoordinates.Longitude.ToString() + "," + 
         bottomCoordinates.Latitude.ToString() + "," +
         topCoordinates.Longitude.ToString() + "," +
         topCoordinates.Latitude.ToString();
 
-        HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+        string xml = HttpRequest.Get(url);
+        return XElement.Parse(xml);
+    }
 
-        using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
-        using (Stream stream = response.GetResponseStream())
-        using (StreamReader reader = new StreamReader(stream))
-        {
-            xml = reader.ReadToEnd();
+    private static Dictionary<Coordinates, double> GetRawElevationData(Coordinates bottomCoordinates, Coordinates topCoordinates, double step = 0.0015) {
+        Coordinates bot = Coordinates.of(bottomCoordinates.Latitude - 0.01, bottomCoordinates.Longitude - 0.01);
+        Coordinates top = Coordinates.of(topCoordinates.Latitude + 0.01, topCoordinates.Longitude + 0.01);
+        Dictionary<Coordinates, double> data = new Dictionary<Coordinates, double>();
+        var srtmData = new SRTMData(@"C:\Projects\RealWorld\Assets\SRTMData");
+
+        for(double i = bot.Latitude; i < top.Latitude; i += step) {
+            for(double j = bot.Longitude; j < top.Longitude; j += step) {
+                double? elevation = (double?)srtmData.GetElevation(i, j);
+                if(elevation.HasValue) {
+                    data.Add(Coordinates.of(i, j), elevation.Value);
+                }
+            }
         }
 
-        return XElement.Parse(xml);
+        return data;
     }
 }

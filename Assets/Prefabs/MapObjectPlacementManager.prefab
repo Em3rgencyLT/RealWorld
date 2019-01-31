@@ -46,6 +46,7 @@ MonoBehaviour:
   originLatitude: 55.237884
   originLongitude: 22.276198
   offset: 0.03
+  terrainMaterial: {fileID: 2100000, guid: 2534ab2e4296054488a748f070eb8de9, type: 2}
   structurePrefab: {fileID: 2284788899354435232, guid: d05cb60e6c65d7a4aa066e3d52cefe50,
     type: 3}
   roadPrefab: {fileID: 7443854564909447544, guid: 3763ae7822541564c91a56834775504f,

@@ -19,10 +19,12 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
 
     private Coordinates bottomCoordinates;
     private Coordinates topCoordinates;
-    private Dictionary<MapElement.ID, MapElement> worldData;
+    private Dictionary<MapElement.ID, MapElement> worldObjectData;
+    private Dictionary<Coordinates, double> worldElevationData;
     
     public GameObject structurePrefab;
     public GameObject roadPrefab;
+    private GameObject terrainObject;
     private GameObject structureParentObject;
     private GameObject roadParentObject;
 
@@ -34,27 +36,78 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
         set { this.projectionOrigin = value; }
     }
 
-    public Dictionary<MapElement.ID, MapElement> WorldData { get { return worldData; } }
+    public Dictionary<MapElement.ID, MapElement> WorldObjectData { get { return worldObjectData; } }
+    public Dictionary<Coordinates, double> WorldElevationData { get { return worldElevationData; } }
 
     void Start() {
         this.topCoordinates = Coordinates.of(OriginLatitude + offset*0.89, OriginLongitude + offset*1.55);
         this.bottomCoordinates = ProjectionOrigin;
 
-        this.worldData = MapData.GetData(bottomCoordinates, topCoordinates);
+        this.worldObjectData = MapData.GetObjectData(bottomCoordinates, topCoordinates);
+        this.worldElevationData = MapData.GetElevationData(bottomCoordinates, topCoordinates);
 
+        PlaceTerrain();
         StartCoroutine("PlaceBuildings");
         StartCoroutine("PlaceRoads");
+    }
+
+    private void PlaceTerrain() {
+        this.terrainObject = new GameObject("Terrain");
+
+        MeshFilter filter = (MeshFilter)terrainObject.AddComponent(typeof(MeshFilter));
+        MeshRenderer renderer = (MeshRenderer)terrainObject.AddComponent(typeof(MeshRenderer));
+        Mesh mesh = new Mesh();
+
+        int pointCountX = 0;
+        int pointCountY = 0;
+        
+        double dummyLat = worldElevationData.First().Key.Latitude;
+        foreach(KeyValuePair<Coordinates, double> entry in worldElevationData)
+        {
+            if(!entry.Key.Latitude.Equals7DigitPrecision(dummyLat)){
+                break;
+            }
+            pointCountX++;
+        }
+        pointCountY = worldElevationData.Count / pointCountX;
+        List<Vector3> terrainPoints = new List<Vector3>();
+
+        foreach(KeyValuePair<Coordinates, double> entry in worldElevationData)
+        {
+            Vector3 point = CoordinateMath.CoordinatesToWorldPosition(entry.Key);
+            point.y = (float)entry.Value;
+            terrainPoints.Add(point);
+        }
+
+        int[] triangles = new int[(pointCountX - 1) * (pointCountY - 1) * 6];
+        for (int ti = 0, vi = 0, y = 0; y < pointCountY - 1; y++, vi++) {
+			for (int x = 0; x < pointCountX - 1; x++, ti += 6, vi++) {
+				triangles[ti] = vi;
+				triangles[ti + 3] = triangles[ti + 2] = vi + 1;
+				triangles[ti + 4] = triangles[ti + 1] = vi + pointCountX;
+				triangles[ti + 5] = vi + pointCountX + 1;
+			}
+		}
+
+        mesh.vertices = terrainPoints.ToArray();
+        mesh.triangles = triangles;
+        mesh.uv = UvCalculator.CalculateUVs(terrainPoints.ToArray());
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+
+        filter.mesh = mesh;
+        renderer.material = new Material(Shader.Find("Standard"));
     }
 
     private IEnumerator PlaceBuildings() {
         int built = 0;
         this.structureParentObject = new GameObject("Structures");
-        foreach (MapElement mapElement in worldData.Values)
+        foreach (MapElement mapElement in worldObjectData.Values)
         {
             if(mapElement.Data.ContainsKey(MapNodeKey.KeyType.Building)) {
                 List<Vector3> verticePositions = new List<Vector3>();
                 mapElement.References.ForEach(reference => {
-                    verticePositions.Add(worldData[reference].Coordinates.Position);
+                    verticePositions.Add(worldObjectData[reference].Coordinates.Position);
                 });
                 if(verticePositions.Count > 3) {
                     verticePositions.RemoveAt(verticePositions.Count - 1);
@@ -66,7 +119,7 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
                     built++;
                 }
                 
-                if(built % 100 == 0) {
+                if(built % 500 == 0) {
                     yield return null;
                 }
             }
@@ -78,7 +131,7 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
     private IEnumerator PlaceRoads() {
         int built = 0;
         this.roadParentObject = new GameObject("Roads");
-        foreach (MapElement mapElement in worldData.Values)
+        foreach (MapElement mapElement in worldObjectData.Values)
         {
             if(!mapElement.Data.ContainsKey(MapNodeKey.KeyType.Highway)) {
                 continue;
@@ -87,7 +140,7 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
             List<Coordinates> waypoints = new List<Coordinates>();
             mapElement.References
             .ForEach(reference => {
-                waypoints.Add(worldData[reference].Coordinates);
+                waypoints.Add(worldObjectData[reference].Coordinates);
             });
 
             List<Vector3> leftVerticePositions = new List<Vector3>();
@@ -133,7 +186,7 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
                 built++;
             }
                 
-            if(built % 100 == 0) {
+            if(built % 250 == 0) {
                 yield return null;
             }
         }

@@ -35,4 +35,9 @@ public class MapObject : MonoBehaviour
 
         return obj;
     }
+
+    
+    protected float findTerrainHeight(Vector3 point) {
+        return 0f;
+    }
 }

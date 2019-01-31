@@ -281,8 +281,13 @@ PrefabInstance:
         type: 3}
     - target: {fileID: 3521855425465974880, guid: 3d1f642bdfec2c7438df492b6361890e,
         type: 3}
-      propertyPath: offset
-      value: 0.015
+      propertyPath: originLatitude
+      value: 54.920069
+      objectReference: {fileID: 0}
+    - target: {fileID: 3521855425465974880, guid: 3d1f642bdfec2c7438df492b6361890e,
+        type: 3}
+      propertyPath: originLongitude
+      value: 23.869303
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 3d1f642bdfec2c7438df492b6361890e, type: 3}
