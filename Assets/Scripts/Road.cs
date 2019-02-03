@@ -1,9 +1,6 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using Domain;
-using Utility;
 
 [RequireComponent(typeof(MeshRenderer), typeof(MeshFilter))]
 public class Road : MapObject

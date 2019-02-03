@@ -1,6 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
+using System;
 using UnityEngine;
 using Domain;
 using Utility;
@@ -13,109 +13,145 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
     private double originLatitude = 55.237884;
     [SerializeField]
     private double originLongitude = 22.276198;
-    private Coordinates projectionOrigin;
     [SerializeField]
     private double offset = 0.03;
 
     private Coordinates bottomCoordinates;
     private Coordinates topCoordinates;
-    private Dictionary<MapElement.ID, MapElement> worldObjectData;
-    private Dictionary<Coordinates, double> worldElevationData;
-    
-    public GameObject structurePrefab;
-    public GameObject roadPrefab;
+    [SerializeField]
+    private GameObject structurePrefab;
+    [SerializeField]
+    private GameObject roadPrefab;
+    [SerializeField]
+    private GameObject terrainSegmentPrefab;
     private GameObject terrainObject;
     private GameObject structureParentObject;
     private GameObject roadParentObject;
 
     public double OriginLongitude { get { return originLongitude; } }
     public double OriginLatitude { get { return originLatitude; } }
-    public Coordinates ProjectionOrigin { 
-        get { return projectionOrigin; } 
-        //TODO: setting the projection origin to something else should also wipe and redraw the entire world
-        set { this.projectionOrigin = value; }
+    //TODO: setting the projection origin to something else should also wipe and redraw the entire world
+    public Coordinates ProjectionOrigin { get; set; }
+
+    public Dictionary<MapElement.ID, MapElement> WorldObjectData { get; private set; }
+    public Vector3[,] WorldElevationData { get; private set; }
+
+    private void Awake()
+    {
+        //get rid of the private field not set warnings and throw proper errors if they actually aren't set
+        if (structurePrefab == null)
+        {
+            structurePrefab = null;
+            throw new ArgumentNullException("Structure Prefab cannot be null! Please set in inspector of MapObjectPlacementManager!");
+        }
+        if (roadPrefab == null)
+        {
+            roadPrefab = null;
+            throw new ArgumentNullException("Road Prefab cannot be null! Please set in inspector of MapObjectPlacementManager!");
+        }
+        if (terrainSegmentPrefab == null)
+        {
+            terrainSegmentPrefab = null;
+            throw new ArgumentNullException("Terrain Sement Prefab cannot be null! Please set in inspector of MapObjectPlacementManager!");
+        }
     }
 
-    public Dictionary<MapElement.ID, MapElement> WorldObjectData { get { return worldObjectData; } }
-    public Dictionary<Coordinates, double> WorldElevationData { get { return worldElevationData; } }
+    void Start()
+    {
+        BuildWorld();
+    }
 
-    void Start() {
-        this.topCoordinates = Coordinates.of(OriginLatitude + offset*0.89, OriginLongitude + offset*1.55);
+    private void BuildWorld()
+    {
+        this.topCoordinates = Coordinates.of(OriginLatitude + offset * 0.89, OriginLongitude + offset * 1.55);
         this.bottomCoordinates = ProjectionOrigin;
 
-        this.worldObjectData = MapData.GetObjectData(bottomCoordinates, topCoordinates);
-        this.worldElevationData = MapData.GetElevationData(bottomCoordinates, topCoordinates);
+        this.WorldObjectData = MapData.GetObjectData(bottomCoordinates, topCoordinates);
+        this.WorldElevationData = MapData.GetElevationData(bottomCoordinates, topCoordinates);
 
-        PlaceTerrain();
-        StartCoroutine("PlaceBuildings");
-        StartCoroutine("PlaceRoads");
+        StartCoroutine("PlaceTerrain");
+        //StartCoroutine("PlaceBuildings");
+        //StartCoroutine("PlaceRoads");
     }
 
-    private void PlaceTerrain() {
+    private IEnumerator PlaceTerrain() {
+        int built = 0;
         this.terrainObject = new GameObject("Terrain");
 
-        MeshFilter filter = (MeshFilter)terrainObject.AddComponent(typeof(MeshFilter));
-        MeshRenderer renderer = (MeshRenderer)terrainObject.AddComponent(typeof(MeshRenderer));
-        Mesh mesh = new Mesh();
+        int dataSizeX = WorldElevationData.GetLength(0);
+        int dataSizeY = WorldElevationData.GetLength(1);
 
-        int pointCountX = 0;
-        int pointCountY = 0;
-        
-        double dummyLat = worldElevationData.First().Key.Latitude;
-        foreach(KeyValuePair<Coordinates, double> entry in worldElevationData)
+        //max 11x11 verts = 200 triangles. Keeping under convex mesh collider 255 triangle limit
+        int maxChunkSizeX = 11;
+        int maxChunkSizeY = 11;
+
+        //Divide entire elevation dataset into chunks
+        for(int x = 0; x < dataSizeX; x += maxChunkSizeX - 1)
         {
-            if(!entry.Key.Latitude.Equals7DigitPrecision(dummyLat)){
-                break;
+            for(int y = 0; y < dataSizeY; y += maxChunkSizeY -1)
+            {
+                int xEnd = x + maxChunkSizeX;
+                int yEnd = y + maxChunkSizeY;
+                if(xEnd >= dataSizeX)
+                {
+                    xEnd = dataSizeX;
+                }
+                if(yEnd >= dataSizeY)
+                {
+                    yEnd = dataSizeY;
+                }
+
+                int sizeX = xEnd - x;
+                int sizeY = yEnd - y;
+
+                if(sizeX < 2 || sizeY < 2)
+                {
+                    continue;
+                }
+
+                Vector3[,] chunkData = new Vector3[sizeX, sizeY];
+
+                //Copy over data points of desired chunk
+                for(int x0 = 0, x1 = x; x1 < xEnd; x0++, x1++)
+                {
+                    for (int y0 = 0, y1 = y; y1 < yEnd; y0++, y1++)
+                    {
+                        chunkData[x0, y0] = WorldElevationData[x1, y1];
+                    }
+                }
+
+                //Instantiate chunk and build mesh
+                GameObject terrainSegment = Instantiate(terrainSegmentPrefab, terrainObject.transform);
+                TerrainSegment segment = terrainSegment.GetComponent<TerrainSegment>();
+                segment.Build(chunkData);
+                built++;
+
+                if (built % 100 == 0)
+                {
+                    yield return null;
+                }
             }
-            pointCountX++;
-        }
-        pointCountY = worldElevationData.Count / pointCountX;
-        List<Vector3> terrainPoints = new List<Vector3>();
-
-        foreach(KeyValuePair<Coordinates, double> entry in worldElevationData)
-        {
-            Vector3 point = CoordinateMath.CoordinatesToWorldPosition(entry.Key);
-            point.y = (float)entry.Value;
-            terrainPoints.Add(point);
         }
 
-        int[] triangles = new int[(pointCountX - 1) * (pointCountY - 1) * 6];
-        for (int ti = 0, vi = 0, y = 0; y < pointCountY - 1; y++, vi++) {
-			for (int x = 0; x < pointCountX - 1; x++, ti += 6, vi++) {
-				triangles[ti] = vi;
-				triangles[ti + 3] = triangles[ti + 2] = vi + 1;
-				triangles[ti + 4] = triangles[ti + 1] = vi + pointCountX;
-				triangles[ti + 5] = vi + pointCountX + 1;
-			}
-		}
-
-        mesh.vertices = terrainPoints.ToArray();
-        mesh.triangles = triangles;
-        mesh.uv = UvCalculator.CalculateUVs(terrainPoints.ToArray());
-        mesh.RecalculateNormals();
-        mesh.RecalculateBounds();
-
-        filter.mesh = mesh;
-        renderer.material = new Material(Shader.Find("Standard"));
+        yield return null;
     }
 
     private IEnumerator PlaceBuildings() {
         int built = 0;
         this.structureParentObject = new GameObject("Structures");
-        foreach (MapElement mapElement in worldObjectData.Values)
+        foreach (MapElement mapElement in WorldObjectData.Values)
         {
             if(mapElement.Data.ContainsKey(MapNodeKey.KeyType.Building)) {
                 List<Vector3> verticePositions = new List<Vector3>();
                 mapElement.References.ForEach(reference => {
-                    verticePositions.Add(worldObjectData[reference].Coordinates.Position);
+                    verticePositions.Add(WorldObjectData[reference].Coordinates.Position);
                 });
                 if(verticePositions.Count > 3) {
                     verticePositions.RemoveAt(verticePositions.Count - 1);
-                    GameObject structureObject = Instantiate(structurePrefab, Vector3.zero, Quaternion.identity);
+                    GameObject structureObject = Instantiate(structurePrefab, structureParentObject.transform);
                     structureObject.name = string.IsNullOrWhiteSpace(mapElement.GetAddress()) ? "Building" : mapElement.GetAddress();
                     Structure structureScript = structureObject.GetComponent<Structure>();
                     structureScript.Build(mapElement, verticePositions);
-                    structureObject.transform.parent = structureParentObject.transform;
                     built++;
                 }
                 
@@ -131,7 +167,7 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
     private IEnumerator PlaceRoads() {
         int built = 0;
         this.roadParentObject = new GameObject("Roads");
-        foreach (MapElement mapElement in worldObjectData.Values)
+        foreach (MapElement mapElement in WorldObjectData.Values)
         {
             if(!mapElement.Data.ContainsKey(MapNodeKey.KeyType.Highway)) {
                 continue;
@@ -140,7 +176,7 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
             List<Coordinates> waypoints = new List<Coordinates>();
             mapElement.References
             .ForEach(reference => {
-                waypoints.Add(worldObjectData[reference].Coordinates);
+                waypoints.Add(WorldObjectData[reference].Coordinates);
             });
 
             List<Vector3> leftVerticePositions = new List<Vector3>();
@@ -174,7 +210,7 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
             });
 
             if(leftVerticePositions.Count > 1 && rightVerticePositions.Count > 1) {
-                GameObject roadObject = Instantiate(roadPrefab, Vector3.zero, Quaternion.identity);
+                GameObject roadObject = Instantiate(roadPrefab, roadParentObject.transform);
                 roadObject.name = string.IsNullOrWhiteSpace(mapElement.GetRoadName()) ? "Road" : mapElement.GetRoadName();
                 Road roadScript = roadObject.GetComponent<Road>();
                 List<Vector3> verticePositions = new List<Vector3>();
@@ -182,7 +218,6 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
                 rightVerticePositions.Reverse();
                 verticePositions.AddRange(rightVerticePositions);
                 roadScript.Build(mapElement, verticePositions);
-                roadObject.transform.parent = roadParentObject.transform;
                 built++;
             }
                 

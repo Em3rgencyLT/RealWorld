@@ -3,7 +3,7 @@ using Utility;
 
 namespace Domain {
     [System.Serializable]
-    public class Coordinates : System.Object {
+    public class Coordinates {
         [SerializeField]
         private double latitude;
         [SerializeField]

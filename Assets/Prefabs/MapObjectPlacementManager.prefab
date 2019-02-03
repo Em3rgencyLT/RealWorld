@@ -43,11 +43,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fa3925232560ec748b6f2db2dbb32fb1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  originLatitude: 55.237884
-  originLongitude: 22.276198
+  originLatitude: 54.920069
+  originLongitude: 23.869303
   offset: 0.03
-  terrainMaterial: {fileID: 2100000, guid: 2534ab2e4296054488a748f070eb8de9, type: 2}
   structurePrefab: {fileID: 2284788899354435232, guid: d05cb60e6c65d7a4aa066e3d52cefe50,
     type: 3}
   roadPrefab: {fileID: 7443854564909447544, guid: 3763ae7822541564c91a56834775504f,
+    type: 3}
+  terrainSegmentPrefab: {fileID: 2471671126546942936, guid: 950af1e1126538f41b1c0c44e784caf0,
     type: 3}

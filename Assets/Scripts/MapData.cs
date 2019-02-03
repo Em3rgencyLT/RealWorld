@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Xml.Linq;
 using System.Linq;
-using Newtonsoft.Json.Linq;
 using UnityEngine;
 using Domain;
 using Utility;
@@ -13,9 +12,10 @@ public class MapData
     private const string MAP_DATA_API_URL = @"https://overpass-api.de/api/map?bbox=";
     private const string ELEVATION_DATA_API_URL = @"https://elevation-api.io/api/elevation?key=J88csE3kf1agWKd0m4IdJ6rq754V76&points=";
 
-    public static Dictionary<Coordinates, double> GetElevationData(Coordinates bottomCoordinates, Coordinates topCoordinates) {
+    public static Vector3[,] GetElevationData(Coordinates bottomCoordinates, Coordinates topCoordinates) {
         Debug.Log("Requesting elevation data...");
-        Dictionary<Coordinates, double> elevationData = GetRawElevationData(bottomCoordinates, topCoordinates);
+        Elevation[,] rawData = GetRawElevationData(bottomCoordinates, topCoordinates);
+        Vector3[,] elevationData = ParseElevationData(rawData);
 
         return elevationData;
     }
@@ -128,18 +128,47 @@ public class MapData
         return XElement.Parse(xml);
     }
 
-    private static Dictionary<Coordinates, double> GetRawElevationData(Coordinates bottomCoordinates, Coordinates topCoordinates, double step = 0.0015) {
+    private static Elevation[,] GetRawElevationData(Coordinates bottomCoordinates, Coordinates topCoordinates, double step = 0.0005) {
         Coordinates bot = Coordinates.of(bottomCoordinates.Latitude - 0.01, bottomCoordinates.Longitude - 0.01);
         Coordinates top = Coordinates.of(topCoordinates.Latitude + 0.01, topCoordinates.Longitude + 0.01);
-        Dictionary<Coordinates, double> data = new Dictionary<Coordinates, double>();
-        var srtmData = new SRTMData(@"C:\Projects\RealWorld\Assets\SRTMData");
 
-        for(double i = bot.Latitude; i < top.Latitude; i += step) {
-            for(double j = bot.Longitude; j < top.Longitude; j += step) {
-                double? elevation = (double?)srtmData.GetElevation(i, j);
+        int stepsX = (int)Math.Ceiling((top.Latitude - bot.Latitude) / step);
+        int stepsY = (int)Math.Ceiling((top.Longitude - bot.Longitude) / step);
+
+        Elevation[,] data = new Elevation[stepsX, stepsY];
+        var srtmData = new SRTMData(Application.dataPath + @"\SRTMData");
+
+        for(int i = 0; i < stepsX; i++) {
+            for(int j = 0; j < stepsY; j++) {
+                double lat = bot.Latitude + step * i;
+                double lon = bot.Longitude + step * j;
+                double? elevation = (double?)srtmData.GetElevation(lat, lon);
+                double height = -100;
+
                 if(elevation.HasValue) {
-                    data.Add(Coordinates.of(i, j), elevation.Value);
+                    height = elevation.Value;
                 }
+
+                data[i, j] = new Elevation(Coordinates.of(lat, lon), height);
+            }
+        }
+
+        return data;
+    }
+
+    private static Vector3[,] ParseElevationData(Elevation[,] rawData)
+    {
+        int iSize = rawData.GetLength(0);
+        int jSize = rawData.GetLength(1);
+        Vector3[,] data = new Vector3[iSize, jSize];
+
+        for(int i = 0; i < iSize; i++)
+        {
+            for(int j = 0; j < jSize; j++)
+            {
+                Elevation elevation = rawData[i, j];
+                Vector3 basePosition = CoordinateMath.CoordinatesToWorldPosition(elevation.Coordinates);
+                data[i, j] = new Vector3(basePosition.x, (float)elevation.Height, basePosition.z);
             }
         }
 
