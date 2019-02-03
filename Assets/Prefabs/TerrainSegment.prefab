@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 3688700030206643858}
   - component: {fileID: 4130369560351891544}
   - component: {fileID: 8606806547272990870}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: TerrainSegment
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -105,5 +105,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5ac8ab458b632554bb43aff4a664694e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  debugSphere: {fileID: 2104231141495952971, guid: d9f4a32e586da9b4787bffac6ca3bbf6,
-    type: 3}
+  terrainMaterial: {fileID: 2100000, guid: 8aedd9e841f7f534ab4a6e462c2f4541, type: 2}

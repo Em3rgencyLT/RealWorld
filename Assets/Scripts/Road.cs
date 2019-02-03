@@ -12,7 +12,7 @@ public class Road : MapObject
         List<Vector3> vertices = new List<Vector3>();
         List<Vector2> vertices2D = new List<Vector2>();
         baseVerticePositions.ForEach(position => {
-            vertices.Add(new Vector3(position.x, 0f, position.z));
+            vertices.Add(new Vector3(position.x, FindTerrainHeight(position) + 0.5f, position.z));
             vertices2D.Add(new Vector2(position.x, position.z));
         });
 

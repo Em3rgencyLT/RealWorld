@@ -6,6 +6,7 @@ using Utility;
 public class TerrainSegment : MonoBehaviour
 {
     private Vector3[,] points;
+    public Material terrainMaterial;
 
     public void Build(Vector3[,] points) {
         this.points = points;
@@ -36,6 +37,6 @@ public class TerrainSegment : MonoBehaviour
 
         gameObject.GetComponent<MeshFilter>().mesh = mesh;
         gameObject.GetComponent<MeshCollider>().sharedMesh = mesh;
-        gameObject.GetComponent<MeshRenderer>().material = new Material(Shader.Find("Standard"));
+        gameObject.GetComponent<MeshRenderer>().material = terrainMaterial;
     }
 }

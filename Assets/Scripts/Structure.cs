@@ -6,21 +6,25 @@ using Utility;
 
 public class Structure : MapObject
 {
+    private float buildingHeight;
+
     public void Build(MapElement mapElement, List<Vector3> baseVerticePositions) {
         this.mapId = mapElement.Id;
         this.baseVerticePositions = baseVerticePositions;
+        this.buildingHeight = GuessBuildingHeight(mapElement.Data[MapNodeKey.KeyType.Building]);
 
-        if(baseVerticePositions.Count < 3) {
+        if (baseVerticePositions.Count < 3) {
             throw new ArgumentException("Can't built a structure with less than 3 vertices at it's base!");
         }
 
         GameObject meshParent = new GameObject("Mesh");
         meshParent.transform.parent = transform;
 
-        float height = GuessBuildingHeight(mapElement.Data[MapNodeKey.KeyType.Building]);
         List<Vector3> verticesTop = new List<Vector3>();
         baseVerticePositions.ForEach(position => {
-            verticesTop.Add(new Vector3(position.x, height, position.z));
+            float terrainHeight = FindTerrainHeight(position);
+            //FIXME: this results in building roofs mimicking the terrain under them. Building roofs should be level.
+            verticesTop.Add(new Vector3(position.x, terrainHeight + buildingHeight, position.z));
         });
 
        MakeRoof(verticesTop).transform.parent = meshParent.transform;
@@ -58,8 +62,8 @@ public class Structure : MapObject
             List<Vector3> wallVertices = new List<Vector3>();
             wallVertices.Add(vertices[i0]);
             wallVertices.Add(vertices[i1]);
-            wallVertices.Add(new Vector3(vertices[i1].x, 0f, vertices[i1].z));
-            wallVertices.Add(new Vector3(vertices[i0].x, 0f, vertices[i0].z));
+            wallVertices.Add(new Vector3(vertices[i1].x, vertices[i1].y - buildingHeight, vertices[i1].z));
+            wallVertices.Add(new Vector3(vertices[i0].x, vertices[i0].y - buildingHeight, vertices[i0].z));
             
             //Dummy data, but in correct order and relative position. Which is all that matters for texture mapping.
             List<Vector2> relativeVertices = new List<Vector2>();

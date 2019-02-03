@@ -34,9 +34,19 @@ public class MapObject : MonoBehaviour
 
         return obj;
     }
-
     
-    protected float findTerrainHeight(Vector3 point) {
-        return 0f;
+    protected float FindTerrainHeight(Vector3 point) {
+        int layerMask = 1 << 10;
+        point.y = 10000;
+
+        RaycastHit hit;
+
+        if (!Physics.Raycast(point, Vector3.down, out hit, Mathf.Infinity, layerMask))
+        {
+            Debug.LogWarning("No terrain found at x:" + point.x + " z:" + point.z);
+            return 0f;
+        }
+
+        return hit.point.y;
     }
 }

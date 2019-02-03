@@ -66,12 +66,12 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
         this.topCoordinates = Coordinates.of(OriginLatitude + offset * 0.89, OriginLongitude + offset * 1.55);
         this.bottomCoordinates = ProjectionOrigin;
 
-        this.WorldObjectData = MapData.GetObjectData(bottomCoordinates, topCoordinates);
         this.WorldElevationData = MapData.GetElevationData(bottomCoordinates, topCoordinates);
+        this.WorldObjectData = MapData.GetObjectData(bottomCoordinates, topCoordinates);
 
         StartCoroutine("PlaceTerrain");
-        //StartCoroutine("PlaceBuildings");
-        //StartCoroutine("PlaceRoads");
+        StartCoroutine("PlaceBuildings");
+        StartCoroutine("PlaceRoads");
     }
 
     private IEnumerator PlaceTerrain() {
