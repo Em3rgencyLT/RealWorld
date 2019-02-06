@@ -4,7 +4,11 @@
 [Bb]uild/
 [Bb]uilds/
 Assets/AssetStoreTools*
-Assets/SRTMData*
+Assets/SRTMData/*.zip
+Assets/SRTMData/*.meta
+
+#Intellij cache
+.idea/
 
 # Visual Studio cache directory
 .vs/

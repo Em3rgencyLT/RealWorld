@@ -136,7 +136,13 @@ public class MapData
         int stepsY = (int)Math.Ceiling((top.Longitude - bot.Longitude) / step);
 
         Elevation[,] data = new Elevation[stepsX, stepsY];
-        var srtmData = new SRTMData(Application.dataPath + @"\SRTMData");
+        
+        string slashDirection = @"\";
+        if (Application.platform == RuntimePlatform.LinuxPlayer || Application.platform == RuntimePlatform.LinuxEditor)
+        {
+            slashDirection = "/";
+        }
+        var srtmData = new SRTMData(Application.dataPath + slashDirection + "SRTMData");
 
         for(int i = 0; i < stepsX; i++) {
             for(int j = 0; j < stepsY; j++) {
