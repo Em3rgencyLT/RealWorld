@@ -4,6 +4,7 @@ using System;
 using System.Globalization;
 using UnityEngine;
 using Domain;
+using Domain.Tuples;
 using Utility;
 
 public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
@@ -11,14 +12,14 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
     protected MapObjectPlacementManager() { }
 
     [SerializeField]
-    private double originLatitude = 55.237884;
+    private double locationLatitude = 54.899737;
     [SerializeField]
-    private double originLongitude = 22.276198;
+    private double locationLongitude = 23.900396;
     [SerializeField]
     private double offset = 0.03;
 
-    private Coordinates bottomCoordinates;
-    private Coordinates topCoordinates;
+    private CoordinateBounding mapDataCoordinateBounding;
+    private CoordinateBounding terrainCoordinateBounding;
     [SerializeField]
     private GameObject structurePrefab;
     [SerializeField]
@@ -26,13 +27,13 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
     [SerializeField]
     private GameObject terrainSegmentPrefab;
     private GameObject terrainObject;
+    private GameObject unityTerrainObject;
     private GameObject structureParentObject;
     private GameObject roadParentObject;
 
-    public double OriginLongitude { get { return originLongitude; } }
-    public double OriginLatitude { get { return originLatitude; } }
     //TODO: setting the projection origin to something else should also wipe and redraw the entire world
-    public Coordinates ProjectionOrigin { get; set; }
+    public Coordinates ProjectionOrigin { get; private set; }
+    public Coordinates MapObjectOrigin { get; private set; }
 
     public Dictionary<MapElement.ID, MapElement> WorldObjectData { get; private set; }
     public Vector3[,] WorldElevationData { get; private set; }
@@ -41,6 +42,7 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
     {
         //Make sure doubles accept . for decimal instead of ,
         System.Threading.Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
+        SetupCoordinates();
         
         //get rid of the private field not set warnings and throw proper errors if they actually aren't set
         if (structurePrefab == null)
@@ -65,22 +67,54 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
         BuildWorld();
     }
 
+    private void SetupCoordinates()
+    {
+        ProjectionOrigin = Coordinates.projectionOriginOf(locationLatitude - offset, locationLongitude - offset);
+        MapObjectOrigin = Coordinates.of(locationLatitude - offset / 2, locationLongitude - offset / 2);
+        
+        Coordinates mapDataBottomCoordinates = MapObjectOrigin;
+        Coordinates mapDataTopCoordinates = Coordinates.of(MapObjectOrigin.Latitude + offset, MapObjectOrigin.Longitude + offset);
+        mapDataCoordinateBounding = CoordinateBounding.of(mapDataBottomCoordinates, mapDataTopCoordinates);
+        
+        Coordinates terrainBottomCoordinates = ProjectionOrigin;
+        Coordinates terrainTopCoordinates = Coordinates.of(ProjectionOrigin.Latitude + offset * 2, ProjectionOrigin.Longitude + offset * 2);
+        terrainCoordinateBounding = CoordinateBounding.of(terrainBottomCoordinates, terrainTopCoordinates);
+    }
+
     private void BuildWorld()
     {
-        this.topCoordinates = Coordinates.of(OriginLatitude + offset * 0.89, OriginLongitude + offset * 1.55);
-        this.bottomCoordinates = ProjectionOrigin;
-
-        this.WorldElevationData = MapData.GetElevationData(bottomCoordinates, topCoordinates);
-        this.WorldObjectData = MapData.GetObjectData(bottomCoordinates, topCoordinates);
+        WorldElevationData = MapData.GetElevationData(terrainCoordinateBounding);
+        WorldObjectData = MapData.GetObjectData(mapDataCoordinateBounding);
+        
+        PlaceUnityTerrain();
 
         StartCoroutine("PlaceTerrain");
         StartCoroutine("PlaceBuildings");
         StartCoroutine("PlaceRoads");
     }
 
+    private void PlaceUnityTerrain()
+    {
+        unityTerrainObject = new GameObject("Unity Terrain");
+        TerrainData terrainData = new TerrainData();
+        
+        terrainData.size = new Vector3(terrainCoordinateBounding.TopCoordinates.Position.x/16, 1000f, terrainCoordinateBounding.TopCoordinates.Position.z/16);
+        terrainData.heightmapResolution = 512;
+        terrainData.baseMapResolution = 1024;
+        terrainData.SetDetailResolution(1024, 32);
+        
+        Debug.Log($"Terrain heightmap width: {terrainData.heightmapResolution}, height: {terrainData.heightmapResolution}");
+        
+        TerrainCollider terrainCollider = unityTerrainObject.AddComponent<TerrainCollider>();
+        Terrain terrain = unityTerrainObject.AddComponent<Terrain>();
+ 
+        terrainCollider.terrainData = terrainData;
+        terrain.terrainData = terrainData;
+    }
+
     private IEnumerator PlaceTerrain() {
         int built = 0;
-        this.terrainObject = new GameObject("Terrain");
+        terrainObject = new GameObject("Terrain");
 
         int dataSizeX = WorldElevationData.GetLength(0);
         int dataSizeY = WorldElevationData.GetLength(1);

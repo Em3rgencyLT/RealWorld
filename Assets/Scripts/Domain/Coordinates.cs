@@ -24,18 +24,15 @@ namespace Domain {
 
         public static Coordinates of (double latitude, double longitude) {
             ValidateLatLong(latitude, longitude);
+               
+            Vector3 position = CoordinateMath.CoordinatesToWorldPosition(latitude, longitude);
+            return new Coordinates(latitude, longitude, position);
+        }
 
-            //Make sure we know what lat/long is at position (0,0,0) 
-            MapObjectPlacementManager mopm = MapObjectPlacementManager.Instance;
-            if(mopm.ProjectionOrigin is null) {
-                mopm.ProjectionOrigin = new Coordinates(mopm.OriginLatitude, mopm.OriginLongitude, Vector3.zero);
-            }
-
-            Coordinates coordinates = new Coordinates(latitude, longitude, Vector3.zero);
-            Vector3 position = CoordinateMath.CoordinatesToWorldPosition(coordinates);
-            coordinates.position = position;
-
-            return coordinates;
+        public static Coordinates projectionOriginOf(double latitude, double longitude)
+        {
+            ValidateLatLong(latitude, longitude);
+            return new Coordinates(latitude, longitude, Vector3.zero);
         }
 
         private static void ValidateLatLong(double latitude, double longitude) {

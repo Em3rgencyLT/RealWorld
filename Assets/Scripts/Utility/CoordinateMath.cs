@@ -41,10 +41,10 @@ namespace Utility {
             return direction;
         }
 
-        public static Vector3 CoordinatesToWorldPosition(Coordinates target) {
+        public static Vector3 CoordinatesToWorldPosition(double latitude, double longitude) {
             Coordinates origin = MapObjectPlacementManager.Instance.ProjectionOrigin;
-            double x = (target.Longitude - origin.Longitude) * (ToRadian(EARTH_RADIUS_KILOMETERS) * Math.Cos(ToRadian(target.Latitude))) * 1000;
-            double y = (target.Latitude - origin.Latitude) * ToRadian(EARTH_RADIUS_KILOMETERS) * 1000;
+            double x = (longitude - origin.Longitude) * (ToRadian(EARTH_RADIUS_KILOMETERS) * Math.Cos(ToRadian(latitude))) * 1000;
+            double y = (latitude - origin.Latitude) * ToRadian(EARTH_RADIUS_KILOMETERS) * 1000;
 
             return new Vector3((float)x, 0f, (float)y);
         }

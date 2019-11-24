@@ -4,25 +4,25 @@ using System.Xml.Linq;
 using System.Linq;
 using UnityEngine;
 using Domain;
+using Domain.Tuples;
 using Utility;
 using SRTM;
 
 public class MapData
 {
     private const string MAP_DATA_API_URL = @"https://overpass-api.de/api/map?bbox=";
-    private const string ELEVATION_DATA_API_URL = @"https://elevation-api.io/api/elevation?key=J88csE3kf1agWKd0m4IdJ6rq754V76&points=";
 
-    public static Vector3[,] GetElevationData(Coordinates bottomCoordinates, Coordinates topCoordinates) {
+    public static Vector3[,] GetElevationData(CoordinateBounding coordinateBounding) {
         Debug.Log("Requesting elevation data...");
-        Elevation[,] rawData = GetRawElevationData(bottomCoordinates, topCoordinates);
+        Elevation[,] rawData = GetRawElevationData(coordinateBounding);
         Vector3[,] elevationData = ParseElevationData(rawData);
 
         return elevationData;
     }
 
-    public static Dictionary<MapElement.ID, MapElement> GetObjectData(Coordinates bottomCoordinates, Coordinates topCoordinates) {
+    public static Dictionary<MapElement.ID, MapElement> GetObjectData(CoordinateBounding coordinateBounding) {
         Debug.Log("Requesting map object data...");
-        XElement rawMapData = GetRawMapData(bottomCoordinates, topCoordinates);
+        XElement rawMapData = GetRawMapData(coordinateBounding);
         Dictionary<MapElement.ID, MapElement> mapData = new Dictionary<MapElement.ID, MapElement>();
 
         mapData = ParseNodes(ref rawMapData);
@@ -117,23 +117,24 @@ public class MapData
         return data;
     }
 
-    private static XElement GetRawMapData(Coordinates bottomCoordinates, Coordinates topCoordinates) {
+    private static XElement GetRawMapData(CoordinateBounding coordinateBounding) {
         string url = MAP_DATA_API_URL + 
-        bottomCoordinates.Longitude + "," + 
-        bottomCoordinates.Latitude + "," +
-        topCoordinates.Longitude + "," +
-        topCoordinates.Latitude;
+        coordinateBounding.BottomCoordinates.Longitude + "," + 
+        coordinateBounding.BottomCoordinates.Latitude + "," +
+        coordinateBounding.TopCoordinates.Longitude + "," +
+        coordinateBounding.TopCoordinates.Latitude;
 
         string xml = HttpRequest.Get(url);
         return XElement.Parse(xml);
     }
 
-    private static Elevation[,] GetRawElevationData(Coordinates bottomCoordinates, Coordinates topCoordinates, double step = 0.0005) {
-        Coordinates bot = Coordinates.of(bottomCoordinates.Latitude - 0.01, bottomCoordinates.Longitude - 0.01);
-        Coordinates top = Coordinates.of(topCoordinates.Latitude + 0.01, topCoordinates.Longitude + 0.01);
+    private static Elevation[,] GetRawElevationData(CoordinateBounding coordinateBounding, double step = 0.0005)
+    {
+        var bottomCoordinates = coordinateBounding.BottomCoordinates;
+        var topCoordinates = coordinateBounding.TopCoordinates;
 
-        int stepsX = (int)Math.Ceiling((top.Latitude - bot.Latitude) / step);
-        int stepsY = (int)Math.Ceiling((top.Longitude - bot.Longitude) / step);
+        int stepsX = (int)Math.Ceiling((topCoordinates.Latitude - bottomCoordinates.Latitude) / step);
+        int stepsY = (int)Math.Ceiling((topCoordinates.Longitude - bottomCoordinates.Longitude) / step);
 
         Elevation[,] data = new Elevation[stepsX, stepsY];
         
@@ -146,8 +147,8 @@ public class MapData
 
         for(int i = 0; i < stepsX; i++) {
             for(int j = 0; j < stepsY; j++) {
-                double lat = bot.Latitude + step * i;
-                double lon = bot.Longitude + step * j;
+                double lat = bottomCoordinates.Latitude + step * i;
+                double lon = bottomCoordinates.Longitude + step * j;
                 double? elevation = srtmData.GetElevation(lat, lon);
                 double height = -100;
 
@@ -173,7 +174,7 @@ public class MapData
             for(int j = 0; j < jSize; j++)
             {
                 Elevation elevation = rawData[i, j];
-                Vector3 basePosition = CoordinateMath.CoordinatesToWorldPosition(elevation.Coordinates);
+                Vector3 basePosition = CoordinateMath.CoordinatesToWorldPosition(elevation.Coordinates.Latitude, elevation.Coordinates.Longitude);
                 data[i, j] = new Vector3(basePosition.x, (float)elevation.Height, basePosition.z);
             }
         }
