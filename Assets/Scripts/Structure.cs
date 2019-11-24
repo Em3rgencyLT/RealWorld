@@ -9,9 +9,9 @@ public class Structure : MapObject
     private float buildingHeight;
 
     public void Build(MapElement mapElement, List<Vector3> baseVerticePositions) {
-        this.mapId = mapElement.Id;
+        mapId = mapElement.Id;
         this.baseVerticePositions = baseVerticePositions;
-        this.buildingHeight = GuessBuildingHeight(mapElement.Data[MapNodeKey.KeyType.Building]);
+        buildingHeight = GuessBuildingHeight(mapElement.Data[MapNodeKey.KeyType.Building]);
 
         if (baseVerticePositions.Count < 3) {
             throw new ArgumentException("Can't built a structure with less than 3 vertices at it's base!");

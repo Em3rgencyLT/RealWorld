@@ -36,7 +36,7 @@ public class MapObject : MonoBehaviour
     }
     
     protected float FindTerrainHeight(Vector3 point) {
-        int layerMask = 1 << 10;
+        int layerMask = 1 << 15;
         point.y = 10000;
 
         RaycastHit hit;

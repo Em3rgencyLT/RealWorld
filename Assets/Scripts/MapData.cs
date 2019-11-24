@@ -130,6 +130,7 @@ public class MapData
 
     private static Elevation[,] GetRawElevationData(CoordinateBounding coordinateBounding, double step = 0.0005)
     {
+        //FIXME: step is tied to world size, it must result in a power of 2 ratio
         var bottomCoordinates = coordinateBounding.BottomCoordinates;
         var topCoordinates = coordinateBounding.TopCoordinates;
 

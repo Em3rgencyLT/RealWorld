@@ -16,17 +16,18 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
     [SerializeField]
     private double locationLongitude = 23.900396;
     [SerializeField]
-    private double offset = 0.03;
+    [Range(1, 2)]
+    private int worldSize = 1;
+    [SerializeField] private Material terrainMaterial;
 
+    //FIXME: Related to MapData#GetRawElevationData, the ratio between this multiplier and step must be a power of 2
+    private readonly float WORLD_SIZE_MULTIPLIER = 0.03225f;
     private CoordinateBounding mapDataCoordinateBounding;
     private CoordinateBounding terrainCoordinateBounding;
     [SerializeField]
     private GameObject structurePrefab;
     [SerializeField]
     private GameObject roadPrefab;
-    [SerializeField]
-    private GameObject terrainSegmentPrefab;
-    private GameObject terrainObject;
     private GameObject unityTerrainObject;
     private GameObject structureParentObject;
     private GameObject roadParentObject;
@@ -55,11 +56,6 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
             roadPrefab = null;
             throw new ArgumentNullException("Road Prefab cannot be null! Please set in inspector of MapObjectPlacementManager!");
         }
-        if (terrainSegmentPrefab == null)
-        {
-            terrainSegmentPrefab = null;
-            throw new ArgumentNullException("Terrain Sement Prefab cannot be null! Please set in inspector of MapObjectPlacementManager!");
-        }
     }
 
     void Start()
@@ -69,6 +65,7 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
 
     private void SetupCoordinates()
     {
+        float offset = worldSize * WORLD_SIZE_MULTIPLIER;
         ProjectionOrigin = Coordinates.projectionOriginOf(locationLatitude - offset, locationLongitude - offset);
         MapObjectOrigin = Coordinates.of(locationLatitude - offset / 2, locationLongitude - offset / 2);
         
@@ -87,8 +84,6 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
         WorldObjectData = MapData.GetObjectData(mapDataCoordinateBounding);
         
         PlaceUnityTerrain();
-
-        StartCoroutine("PlaceTerrain");
         StartCoroutine("PlaceBuildings");
         StartCoroutine("PlaceRoads");
     }
@@ -96,87 +91,37 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
     private void PlaceUnityTerrain()
     {
         unityTerrainObject = new GameObject("Unity Terrain");
+        unityTerrainObject.layer = 15;
         TerrainData terrainData = new TerrainData();
         
-        terrainData.size = new Vector3(terrainCoordinateBounding.TopCoordinates.Position.x/16, 1000f, terrainCoordinateBounding.TopCoordinates.Position.z/16);
-        terrainData.heightmapResolution = 512;
+        //
+        terrainData.size = new Vector3(terrainCoordinateBounding.TopCoordinates.Position.x/Mathf.Pow(2, worldSize+1), 8848f, terrainCoordinateBounding.TopCoordinates.Position.z/Mathf.Pow(2, worldSize+1));
+        terrainData.heightmapResolution = (int)Math.Pow(2, 6 + worldSize) + 1;
         terrainData.baseMapResolution = 1024;
         terrainData.SetDetailResolution(1024, 32);
         
-        Debug.Log($"Terrain heightmap width: {terrainData.heightmapResolution}, height: {terrainData.heightmapResolution}");
+        float[,] heightmap = new float[terrainData.heightmapResolution,terrainData.heightmapResolution];
+        for (int i = 0; i < terrainData.heightmapResolution; i++)
+        {
+            for (int j = 0; j < terrainData.heightmapResolution; j++)
+            {
+                heightmap[i,j] = WorldElevationData[i, j].y / 8848f;
+            }
+        }
+        terrainData.SetHeights(0,0, heightmap);
         
         TerrainCollider terrainCollider = unityTerrainObject.AddComponent<TerrainCollider>();
         Terrain terrain = unityTerrainObject.AddComponent<Terrain>();
+        terrain.materialTemplate = terrainMaterial;
  
         terrainCollider.terrainData = terrainData;
         terrain.terrainData = terrainData;
-    }
-
-    private IEnumerator PlaceTerrain() {
-        int built = 0;
-        terrainObject = new GameObject("Terrain");
-
-        int dataSizeX = WorldElevationData.GetLength(0);
-        int dataSizeY = WorldElevationData.GetLength(1);
-
-        //max 11x11 verts = 200 triangles. Keeping under convex mesh collider 255 triangle limit
-        int maxChunkSizeX = 11;
-        int maxChunkSizeY = 11;
-
-        //Divide entire elevation dataset into chunks
-        for(int x = 0; x < dataSizeX; x += maxChunkSizeX - 1)
-        {
-            for(int y = 0; y < dataSizeY; y += maxChunkSizeY -1)
-            {
-                int xEnd = x + maxChunkSizeX;
-                int yEnd = y + maxChunkSizeY;
-                if(xEnd >= dataSizeX)
-                {
-                    xEnd = dataSizeX;
-                }
-                if(yEnd >= dataSizeY)
-                {
-                    yEnd = dataSizeY;
-                }
-
-                int sizeX = xEnd - x;
-                int sizeY = yEnd - y;
-
-                if(sizeX < 2 || sizeY < 2)
-                {
-                    continue;
-                }
-
-                Vector3[,] chunkData = new Vector3[sizeX, sizeY];
-
-                //Copy over data points of desired chunk
-                for(int x0 = 0, x1 = x; x1 < xEnd; x0++, x1++)
-                {
-                    for (int y0 = 0, y1 = y; y1 < yEnd; y0++, y1++)
-                    {
-                        chunkData[x0, y0] = WorldElevationData[x1, y1];
-                    }
-                }
-
-                //Instantiate chunk and build mesh
-                GameObject terrainSegment = Instantiate(terrainSegmentPrefab, terrainObject.transform);
-                TerrainSegment segment = terrainSegment.GetComponent<TerrainSegment>();
-                segment.Build(chunkData);
-                built++;
-
-                if (built % 100 == 0)
-                {
-                    yield return null;
-                }
-            }
-        }
-
-        yield return null;
+        unityTerrainObject.isStatic = true;
     }
 
     private IEnumerator PlaceBuildings() {
         int built = 0;
-        this.structureParentObject = new GameObject("Structures");
+        structureParentObject = new GameObject("Structures");
         foreach (MapElement mapElement in WorldObjectData.Values)
         {
             if(mapElement.Data.ContainsKey(MapNodeKey.KeyType.Building)) {

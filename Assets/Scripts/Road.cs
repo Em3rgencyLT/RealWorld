@@ -6,7 +6,7 @@ using Domain;
 public class Road : MapObject
 {
     public void Build(MapElement mapElement, List<Vector3> baseVerticePositions) {
-        this.mapId = mapElement.Id;
+        mapId = mapElement.Id;
         this.baseVerticePositions = baseVerticePositions;
 
         List<Vector3> vertices = new List<Vector3>();
