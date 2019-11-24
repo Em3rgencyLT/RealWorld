@@ -119,10 +119,10 @@ public class MapData
 
     private static XElement GetRawMapData(Coordinates bottomCoordinates, Coordinates topCoordinates) {
         string url = MAP_DATA_API_URL + 
-        bottomCoordinates.Longitude.ToString() + "," + 
-        bottomCoordinates.Latitude.ToString() + "," +
-        topCoordinates.Longitude.ToString() + "," +
-        topCoordinates.Latitude.ToString();
+        bottomCoordinates.Longitude + "," + 
+        bottomCoordinates.Latitude + "," +
+        topCoordinates.Longitude + "," +
+        topCoordinates.Latitude;
 
         string xml = HttpRequest.Get(url);
         return XElement.Parse(xml);
@@ -148,7 +148,7 @@ public class MapData
             for(int j = 0; j < stepsY; j++) {
                 double lat = bot.Latitude + step * i;
                 double lon = bot.Longitude + step * j;
-                double? elevation = (double?)srtmData.GetElevation(lat, lon);
+                double? elevation = srtmData.GetElevation(lat, lon);
                 double height = -100;
 
                 if(elevation.HasValue) {

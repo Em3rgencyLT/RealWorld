@@ -1,3 +1,4 @@
+using System.Globalization;
 using UnityEngine;
 using Utility;
 
@@ -11,9 +12,9 @@ namespace Domain {
         [SerializeField]
         private Vector3 position;
 
-        public double Latitude{ get {return latitude;} }
-        public double Longitude{ get {return longitude;} }
-        public Vector3 Position{ get {return position;} }
+        public double Latitude => latitude;
+        public double Longitude => longitude;
+        public Vector3 Position => position;
 
         private Coordinates(double latitude, double longitude, Vector3 position) {
             this.latitude = latitude;

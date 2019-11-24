@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System;
+using System.Globalization;
 using UnityEngine;
 using Domain;
 using Utility;
@@ -38,6 +39,9 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
 
     private void Awake()
     {
+        //Make sure doubles accept . for decimal instead of ,
+        System.Threading.Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
+        
         //get rid of the private field not set warnings and throw proper errors if they actually aren't set
         if (structurePrefab == null)
         {
