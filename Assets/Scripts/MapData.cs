@@ -5,6 +5,7 @@ using System.Linq;
 using UnityEngine;
 using Domain;
 using Domain.Tuples;
+using Services;
 using Utility;
 using SRTM;
 
@@ -12,17 +13,17 @@ public class MapData
 {
     private const string MAP_DATA_API_URL = @"https://overpass-api.de/api/map?bbox=";
 
-    public static Vector3[,] GetElevationData(CoordinateBounding coordinateBounding) {
+    public static Vector3[,] GetElevationData(CoordinateBox coordinateBox, int heightmapResolution) {
         Debug.Log("Requesting elevation data...");
-        Elevation[,] rawData = GetRawElevationData(coordinateBounding);
+        Elevation[,] rawData = GetRawElevationData(coordinateBox, heightmapResolution);
         Vector3[,] elevationData = ParseElevationData(rawData);
 
         return elevationData;
     }
 
-    public static Dictionary<MapElement.ID, MapElement> GetObjectData(CoordinateBounding coordinateBounding) {
+    public static Dictionary<MapElement.ID, MapElement> GetObjectData(CoordinateBox coordinateBox) {
         Debug.Log("Requesting map object data...");
-        XElement rawMapData = GetRawMapData(coordinateBounding);
+        XElement rawMapData = GetRawMapData(coordinateBox);
         Dictionary<MapElement.ID, MapElement> mapData = new Dictionary<MapElement.ID, MapElement>();
 
         mapData = ParseNodes(ref rawMapData);
@@ -117,27 +118,26 @@ public class MapData
         return data;
     }
 
-    private static XElement GetRawMapData(CoordinateBounding coordinateBounding) {
+    private static XElement GetRawMapData(CoordinateBox coordinateBox) {
         string url = MAP_DATA_API_URL + 
-        coordinateBounding.BottomCoordinates.Longitude + "," + 
-        coordinateBounding.BottomCoordinates.Latitude + "," +
-        coordinateBounding.TopCoordinates.Longitude + "," +
-        coordinateBounding.TopCoordinates.Latitude;
+        coordinateBox.BottomCoordinates.Longitude + "," + 
+        coordinateBox.BottomCoordinates.Latitude + "," +
+        coordinateBox.TopCoordinates.Longitude + "," +
+        coordinateBox.TopCoordinates.Latitude;
 
         string xml = HttpRequest.Get(url);
         return XElement.Parse(xml);
     }
 
-    private static Elevation[,] GetRawElevationData(CoordinateBounding coordinateBounding, double step = 0.0005)
+    private static Elevation[,] GetRawElevationData(CoordinateBox coordinateBox, int resolution)
     {
-        //FIXME: step is tied to world size, it must result in a power of 2 ratio
-        var bottomCoordinates = coordinateBounding.BottomCoordinates;
-        var topCoordinates = coordinateBounding.TopCoordinates;
+        var bottomCoordinates = coordinateBox.BottomCoordinates;
+        var topCoordinates = coordinateBox.TopCoordinates;
 
-        int stepsX = (int)Math.Ceiling((topCoordinates.Latitude - bottomCoordinates.Latitude) / step);
-        int stepsY = (int)Math.Ceiling((topCoordinates.Longitude - bottomCoordinates.Longitude) / step);
+        double stepLat = (topCoordinates.Latitude - bottomCoordinates.Latitude) / resolution;
+        double stepLong = (topCoordinates.Longitude - bottomCoordinates.Longitude) / resolution;
 
-        Elevation[,] data = new Elevation[stepsX, stepsY];
+        Elevation[,] data = new Elevation[resolution, resolution];
         
         string slashDirection = @"\";
         if (Application.platform == RuntimePlatform.LinuxPlayer || Application.platform == RuntimePlatform.LinuxEditor)
@@ -146,10 +146,10 @@ public class MapData
         }
         var srtmData = new SRTMData(Application.dataPath + slashDirection + "SRTMData");
 
-        for(int i = 0; i < stepsX; i++) {
-            for(int j = 0; j < stepsY; j++) {
-                double lat = bottomCoordinates.Latitude + step * i;
-                double lon = bottomCoordinates.Longitude + step * j;
+        for(int i = 0; i < resolution; i++) {
+            for(int j = 0; j < resolution; j++) {
+                double lat = bottomCoordinates.Latitude + stepLat * i;
+                double lon = bottomCoordinates.Longitude + stepLong * j;
                 double? elevation = srtmData.GetElevation(lat, lon);
                 double height = -100;
 
