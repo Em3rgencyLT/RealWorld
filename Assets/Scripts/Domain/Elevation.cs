@@ -3,6 +3,7 @@ using Utility;
 
 namespace Domain {
     [System.Serializable]
+    //FIXME: Coordinates should not contain a Vector3 position. This tuple should contain Coordinates and a Vector3 position.
     public class Elevation {
         [SerializeField]
         private Coordinates coordinates;

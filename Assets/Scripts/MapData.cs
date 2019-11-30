@@ -5,21 +5,11 @@ using System.Linq;
 using UnityEngine;
 using Domain;
 using Domain.Tuples;
-using Services;
 using Utility;
-using SRTM;
 
 public class MapData
 {
     private const string MAP_DATA_API_URL = @"https://overpass-api.de/api/map?bbox=";
-
-    public static Vector3[,] GetElevationData(CoordinateBox coordinateBox, int heightmapResolution) {
-        Debug.Log("Requesting elevation data...");
-        Elevation[,] rawData = GetRawElevationData(coordinateBox, heightmapResolution);
-        Vector3[,] elevationData = ParseElevationData(rawData);
-
-        return elevationData;
-    }
 
     public static Dictionary<MapElement.ID, MapElement> GetObjectData(CoordinateBox coordinateBox) {
         Debug.Log("Requesting map object data...");
@@ -127,59 +117,5 @@ public class MapData
 
         string xml = HttpRequest.Get(url);
         return XElement.Parse(xml);
-    }
-
-    private static Elevation[,] GetRawElevationData(CoordinateBox coordinateBox, int resolution)
-    {
-        var bottomCoordinates = coordinateBox.BottomCoordinates;
-        var topCoordinates = coordinateBox.TopCoordinates;
-
-        double stepLat = (topCoordinates.Latitude - bottomCoordinates.Latitude) / resolution;
-        double stepLong = (topCoordinates.Longitude - bottomCoordinates.Longitude) / resolution;
-
-        Elevation[,] data = new Elevation[resolution, resolution];
-        
-        string slashDirection = @"\";
-        if (Application.platform == RuntimePlatform.LinuxPlayer || Application.platform == RuntimePlatform.LinuxEditor)
-        {
-            slashDirection = "/";
-        }
-        var srtmData = new SRTMData(Application.dataPath + slashDirection + "SRTMData");
-
-        for(int i = 0; i < resolution; i++) {
-            for(int j = 0; j < resolution; j++) {
-                double lat = bottomCoordinates.Latitude + stepLat * i;
-                double lon = bottomCoordinates.Longitude + stepLong * j;
-                double? elevation = srtmData.GetElevation(lat, lon);
-                double height = -100;
-
-                if(elevation.HasValue) {
-                    height = elevation.Value;
-                }
-
-                data[i, j] = new Elevation(Coordinates.of(lat, lon), height);
-            }
-        }
-
-        return data;
-    }
-
-    private static Vector3[,] ParseElevationData(Elevation[,] rawData)
-    {
-        int iSize = rawData.GetLength(0);
-        int jSize = rawData.GetLength(1);
-        Vector3[,] data = new Vector3[iSize, jSize];
-
-        for(int i = 0; i < iSize; i++)
-        {
-            for(int j = 0; j < jSize; j++)
-            {
-                Elevation elevation = rawData[i, j];
-                Vector3 basePosition = CoordinateMath.CoordinatesToWorldPosition(elevation.Coordinates.Latitude, elevation.Coordinates.Longitude);
-                data[i, j] = new Vector3(basePosition.x, (float)elevation.Height, basePosition.z);
-            }
-        }
-
-        return data;
     }
 }

@@ -82,7 +82,8 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
     {
         var heightmapService = new HeighmapService(worldSize);
         var heightmapResolution = heightmapService.GetHeightmapResolution();
-        WorldElevationData = MapData.GetElevationData(_terrainCoordinateBox, heightmapResolution);
+        var elevationService = new ElevationService(heightmapResolution);
+        WorldElevationData = elevationService.GetElevationMap(_terrainCoordinateBox);
         WorldObjectData = MapData.GetObjectData(_mapDataCoordinateBox);
         var heighmap = heightmapService.GetHeightmapMatrix(WorldElevationData);
 
@@ -98,30 +99,34 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
         structureParentObject = new GameObject("Structures");
         foreach (MapElement mapElement in WorldObjectData.Values)
         {
-            if (mapElement.Data.ContainsKey(MapNodeKey.KeyType.Building))
+            if (!mapElement.Data.ContainsKey(MapNodeKey.KeyType.Building))
             {
-                List<Vector3> verticePositions = new List<Vector3>();
-                mapElement.References.ForEach(reference =>
-                {
-                    verticePositions.Add(WorldObjectData[reference].Coordinates.Position);
-                });
-                if (verticePositions.Count > 3)
-                {
-                    verticePositions.RemoveAt(verticePositions.Count - 1);
-                    GameObject structureObject = Instantiate(structurePrefab, structureParentObject.transform);
-                    structureObject.name = string.IsNullOrWhiteSpace(mapElement.GetAddress())
-                        ? "Building"
-                        : mapElement.GetAddress();
-                    Structure structureScript = structureObject.GetComponent<Structure>();
-                    structureScript.Build(mapElement, verticePositions);
-                    built++;
-                }
-
-                if (built % 500 == 0)
-                {
-                    yield return null;
-                }
+                continue;
             }
+
+            List<Vector3> verticePositions = new List<Vector3>();
+            mapElement.References.ForEach(reference =>
+            {
+                verticePositions.Add(WorldObjectData[reference].Coordinates.Position);
+            });
+            if (verticePositions.Count < 3)
+            {
+                continue;
+            }
+
+            verticePositions.RemoveAt(verticePositions.Count - 1);
+            GameObject structureObject = Instantiate(structurePrefab, structureParentObject.transform);
+            structureObject.name = string.IsNullOrWhiteSpace(mapElement.GetAddress())
+                ? "Building"
+                : mapElement.GetAddress();
+            Structure structureScript = structureObject.GetComponent<Structure>();
+            structureScript.Build(mapElement, verticePositions);
+            built++;
+        }
+
+        if (built % 500 == 0)
+        {
+            yield return null;
         }
 
         yield return null;
@@ -130,7 +135,7 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
     private IEnumerator PlaceRoads()
     {
         int built = 0;
-        this.roadParentObject = new GameObject("Roads");
+        roadParentObject = new GameObject("Roads");
         foreach (MapElement mapElement in WorldObjectData.Values)
         {
             if (!mapElement.Data.ContainsKey(MapNodeKey.KeyType.Highway))
