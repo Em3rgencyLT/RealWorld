@@ -8,35 +8,26 @@ using Utility;
 namespace Domain {
     public class MapElement {
 
-        private ID id;
-        [CanBeNull] private Coordinates coordinates;
-        private Dictionary<MapNodeKey.KeyType, String> data = new Dictionary<MapNodeKey.KeyType, string>();
-        private List<MapElement.ID> references = new List<MapElement.ID>();
-        private bool isBuilt = false;
+        private ID _id;
+        [CanBeNull] private CoordinatesWithPosition _coordinatesWithPosition;
+        private Dictionary<MapNodeKey.KeyType, String> _data;
+        private List<ID> _references;
+        private bool _isBuilt;
 
-        public ID Id { get { return this.id; } }
-        public Coordinates Coordinates { get { return this.coordinates; } }
-        public Dictionary<MapNodeKey.KeyType, String> Data { get { return this.data; } }
-        [CanBeNull] public List<MapElement.ID> References { get { return this.references; } }
-        public bool IsBuilt { get { return this.isBuilt; } }
-
-        public void AddData (MapNodeKey.KeyType type, String value) {
-            this.data.Add(type, value);
-        }
-
-        public void AddDatum (Dictionary<MapNodeKey.KeyType, String> datum) {
-            this.data = this.data.Concat(datum).ToDictionary(x => x.Key, x => x.Value);
-        }
+        public ID Id => _id;
+        public CoordinatesWithPosition CoordinatesWithPosition => _coordinatesWithPosition;
+        public Dictionary<MapNodeKey.KeyType, String> Data => _data;
+        [CanBeNull] public List<ID> References => _references;
 
         public MapElement (
             ID id, 
-            [CanBeNull] Coordinates coordinates, 
+            [CanBeNull] CoordinatesWithPosition coordinatesWithPosition, 
             Dictionary<MapNodeKey.KeyType, String> data, 
             List<ID> references) {
-            this.id = id;
-            this.coordinates = coordinates;
-            this.data = data;
-            this.references = references;
+            _id = id;
+            _coordinatesWithPosition = coordinatesWithPosition;
+            _data = data;
+            _references = references;
         }
 
         public string GetAddress() {
@@ -53,21 +44,13 @@ namespace Domain {
             return type.Capitalise() + (name.Length > 0 ? " " + name : "");
         }
 
-        public void MarkBuilt() {
-            if(this.isBuilt) {
-                throw new Exception(this.id.Id.ToString() + " tried to mark as built when already built!");
-            }
-
-            this.isBuilt = true;
-        }
-
         public struct ID {
-            private long id;
+            private long _id;
 
-            public long Id { get {return this.id; } }
+            public long Id => _id;
 
             public ID(long id) {
-                this.id = id;
+                _id = id;
             }
         }
     }

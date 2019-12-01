@@ -10,14 +10,14 @@ namespace Services
     {
         public OSMDataService() {}
         
-        public XElement GetDataForArea(CoordinateBox coordinateBox) {
+        public XElement GetDataForArea(AreaBounds<Coordinates> areaBounds) {
             Debug.Log(
-                $"Requesting map object data from {coordinateBox.BottomCoordinates} to {coordinateBox.TopCoordinates}.");
+                $"Requesting map object data from {areaBounds.BottomPoint} to {areaBounds.TopPoint}.");
             string url = Parameters.OSM_DATA_API_URL + 
-                         coordinateBox.BottomCoordinates.Longitude + "," + 
-                         coordinateBox.BottomCoordinates.Latitude + "," +
-                         coordinateBox.TopCoordinates.Longitude + "," +
-                         coordinateBox.TopCoordinates.Latitude;
+                         areaBounds.BottomPoint.Longitude + "," + 
+                         areaBounds.BottomPoint.Latitude + "," +
+                         areaBounds.TopPoint.Longitude + "," +
+                         areaBounds.TopPoint.Latitude;
 
             string xml = HttpRequest.Get(url);
             return XElement.Parse(xml);

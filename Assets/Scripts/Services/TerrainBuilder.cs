@@ -7,7 +7,7 @@ namespace Services
 {
     public class TerrainBuilder
     {
-        private CoordinateBox _terrainCoordinateBox;
+        private Vector3 _terrainAreaTopPoint;
         private float[,] _heightmap;
 
         //FIXME: should have a fancy multi-texture terrain thingy
@@ -16,10 +16,10 @@ namespace Services
         private int _detailResolution = 1024;
         private int _resolutionPerPatch = 32;
 
-        public TerrainBuilder(float[,] heightmap, CoordinateBox terrainTerrainCoordinateBox, Material material)
+        public TerrainBuilder(float[,] heightmap, Vector3 terrainAreaTopPoint, Material material)
         {
             _heightmap = heightmap;
-            _terrainCoordinateBox = terrainTerrainCoordinateBox;
+            _terrainAreaTopPoint = terrainAreaTopPoint;
             _material = material;
         }
 
@@ -51,8 +51,7 @@ namespace Services
             terrainData.baseMapResolution = _baseMapResolution;
             terrainData.SetDetailResolution(_detailResolution, _resolutionPerPatch);
             terrainData.size =
-                new Vector3(_terrainCoordinateBox.TopCoordinates.Position.x, 8848f,
-                    _terrainCoordinateBox.TopCoordinates.Position.z);
+                new Vector3(_terrainAreaTopPoint.x, 8848f, _terrainAreaTopPoint.z);
             terrainData.SetHeights(0, 0, _heightmap);
 
             TerrainCollider terrainCollider = terrainObject.AddComponent<TerrainCollider>();
