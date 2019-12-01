@@ -1,13 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
+using UnityEngine;
 using Utility;
 
 namespace Domain {
     public class MapElement {
 
         private ID id;
-        private Coordinates coordinates;
+        [CanBeNull] private Coordinates coordinates;
         private Dictionary<MapNodeKey.KeyType, String> data = new Dictionary<MapNodeKey.KeyType, string>();
         private List<MapElement.ID> references = new List<MapElement.ID>();
         private bool isBuilt = false;
@@ -15,7 +17,7 @@ namespace Domain {
         public ID Id { get { return this.id; } }
         public Coordinates Coordinates { get { return this.coordinates; } }
         public Dictionary<MapNodeKey.KeyType, String> Data { get { return this.data; } }
-        public List<MapElement.ID> References { get { return this.references; } }
+        [CanBeNull] public List<MapElement.ID> References { get { return this.references; } }
         public bool IsBuilt { get { return this.isBuilt; } }
 
         public void AddData (MapNodeKey.KeyType type, String value) {
@@ -26,21 +28,15 @@ namespace Domain {
             this.data = this.data.Concat(datum).ToDictionary(x => x.Key, x => x.Value);
         }
 
-        public void AddReference (MapElement.ID id) {
-            this.references.Add(id);
-        }
-
-        public void AddReferences (List<MapElement.ID> ids) {
-            this.references.AddRange(ids);
-        }
-
-        public MapElement (ID id) {
-            this.id = id;
-        }
-
-        public MapElement (ID id, Coordinates coordinates) {
+        public MapElement (
+            ID id, 
+            [CanBeNull] Coordinates coordinates, 
+            Dictionary<MapNodeKey.KeyType, String> data, 
+            List<ID> references) {
             this.id = id;
             this.coordinates = coordinates;
+            this.data = data;
+            this.references = references;
         }
 
         public string GetAddress() {

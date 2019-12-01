@@ -2,6 +2,7 @@ namespace Domain
 {
     public static class Parameters
     {
+        public static readonly string OSM_DATA_API_URL = @"https://overpass-api.de/api/map?bbox=";
         /*The WORLD_SIZE_MULTIPLIER and HEIGHTMAP_RESOLUTION_BASE_POWER values correlate to world smoothness.
          Adjust if begin seeing rectangular tiling. Lowering either value will make things smoother. Lowering too
          much will decrease accuracy.*/

@@ -40,12 +40,8 @@ namespace Services
                     double lat = bottomCoordinates.Latitude + stepLat * i;
                     double lon = bottomCoordinates.Longitude + stepLong * j;
                     double? elevation = srtmData.GetElevation(lat, lon);
-                    double height = 0;
-
-                    if (elevation.HasValue)
-                    {
-                        height = elevation.Value;
-                    }
+                    //TODO: go over all -1 values in the heightmap and average them to their neighbour values
+                    double height =  elevation ?? -1;
 
                     Vector3 basePosition = CoordinateMath.CoordinatesToWorldPosition(lat,lon);
                     data[i, j] = new Vector3(basePosition.x, (float) height, basePosition.z);
