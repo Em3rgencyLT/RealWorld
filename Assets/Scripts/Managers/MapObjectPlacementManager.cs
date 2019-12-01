@@ -83,12 +83,15 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
         var heightmapService = new HeighmapService(worldSize);
         var heightmapResolution = heightmapService.GetHeightmapResolution();
         var elevationService = new ElevationService(heightmapResolution);
+        var osmParserService = new OSMParserService();
+        
         WorldElevationData = elevationService.GetElevationMap(_terrainCoordinateBox);
-        WorldObjectData = MapData.GetObjectData(_mapDataCoordinateBox);
-        var heighmap = heightmapService.GetHeightmapMatrix(WorldElevationData);
+        var osmData = new OSMDataService().GetDataForArea(_mapDataCoordinateBox);
+        WorldObjectData = osmParserService.Parse(osmData);
+        var heightmap = heightmapService.GetHeightmapMatrix(WorldElevationData);
 
         terrainObject =
-            new TerrainBuilder(heighmap, _terrainCoordinateBox, terrainMaterial).Build();
+            new TerrainBuilder(heightmap, _terrainCoordinateBox, terrainMaterial).Build();
         StartCoroutine("PlaceBuildings");
         StartCoroutine("PlaceRoads");
     }
