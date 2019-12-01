@@ -1,19 +1,15 @@
+using System;
 using UnityEngine;
 
 namespace Domain {
-    [System.Serializable]
     public class Coordinates {
-        [SerializeField]
-        private double latitude;
-        [SerializeField]
-        private double longitude;
+        public double Latitude { get; }
 
-        public double Latitude => latitude;
-        public double Longitude => longitude;
+        public double Longitude { get; }
 
         private Coordinates(double latitude, double longitude) {
-            this.latitude = latitude;
-            this.longitude = longitude;
+            Latitude = latitude;
+            Longitude = longitude;
         }
 
         public static Coordinates of (double latitude, double longitude) {
@@ -24,9 +20,25 @@ namespace Domain {
             return new Coordinates(latitude, longitude);
         }
 
+        public static Coordinates lerp(Coordinates origin, Coordinates target, float size)
+        {
+            if (size > 1 || size < 0)
+            {
+                throw new ArgumentException("Parameter 'size' must be between 0 and 1 in Coordinates#lerp!");
+            }
+            
+            double deltaLat = target.Latitude - origin.Latitude;
+            double deltaLong = target.Longitude - origin.Longitude;
+
+            double newLat = origin.Latitude + deltaLat * size;
+            double newLong = origin.Longitude + deltaLong * size;
+
+            return of(newLat, newLong);
+        }
+
         public override string ToString()
         {
-            return "Lat: " + latitude + " Long: " + longitude;
+            return "Lat: " + Latitude + " Long: " + Longitude;
         }
     }
 }
