@@ -16,29 +16,39 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
 
     [SerializeField] private double locationLatitude = 54.899737;
     [SerializeField] private double locationLongitude = 23.900396;
-    [SerializeField] [Range(1, 4)] private int worldSize = 1;
+    [SerializeField] [Range(2,5)] private int worldSize = 1;
     [SerializeField] private Material terrainMaterial;
 
-    private CoordinateBox _mapDataCoordinateBox;
-    private CoordinateBox _terrainCoordinateBox;
+    private AreaBounds<Coordinates> _mapDataAreaBounds;
+    private AreaBounds<Coordinates> _terrainAreaBounds;
     [SerializeField] private GameObject structurePrefab;
     [SerializeField] private GameObject roadPrefab;
     private GameObject terrainObject;
     private GameObject structureParentObject;
     private GameObject roadParentObject;
 
+    private SRTMDataService _srtmDataService;
+    private OSMDataService _osmDataService;
+    private HeightmapService _heightmapService;
+    private OSMParserService _osmParserService;
+
     //TODO: setting the projection origin to something else should also wipe and redraw the entire world
     public Coordinates ProjectionOrigin { get; private set; }
     public Coordinates MapObjectOrigin { get; private set; }
 
     public Dictionary<MapElement.ID, MapElement> WorldObjectData { get; private set; }
-    public Vector3[,] WorldElevationData { get; private set; }
 
     private void Awake()
     {
         //Make sure doubles accept . for decimal instead of ,
         System.Threading.Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-        SetupCoordinates();
+        
+        _srtmDataService = new SRTMDataService();
+        _osmDataService = new OSMDataService();
+        _heightmapService = new HeightmapService(worldSize, _srtmDataService);
+        _osmParserService = new OSMParserService(_srtmDataService);
+        
+        SetupAreas();
 
         //get rid of the private field not set warnings and throw proper errors if they actually aren't set
         if (structurePrefab == null)
@@ -61,37 +71,33 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
         BuildWorld();
     }
 
-    private void SetupCoordinates()
+    private void SetupAreas()
     {
         float offset = worldSize * Parameters.WORLD_SIZE_MULTIPLIER;
-        ProjectionOrigin = Coordinates.projectionOriginOf(locationLatitude - offset, locationLongitude - offset);
+        ProjectionOrigin = Coordinates.of(locationLatitude - offset, locationLongitude - offset);
         MapObjectOrigin = Coordinates.of(locationLatitude - offset / 2, locationLongitude - offset / 2);
 
         Coordinates mapDataBottomCoordinates = MapObjectOrigin;
         Coordinates mapDataTopCoordinates =
             Coordinates.of(MapObjectOrigin.Latitude + offset, MapObjectOrigin.Longitude + offset);
-        _mapDataCoordinateBox = CoordinateBox.of(mapDataBottomCoordinates, mapDataTopCoordinates);
+        _mapDataAreaBounds = AreaBounds<Coordinates>.of(mapDataBottomCoordinates, mapDataTopCoordinates);
 
         Coordinates terrainBottomCoordinates = ProjectionOrigin;
         Coordinates terrainTopCoordinates =
             Coordinates.of(ProjectionOrigin.Latitude + offset * 2, ProjectionOrigin.Longitude + offset * 2);
-        _terrainCoordinateBox = CoordinateBox.of(terrainBottomCoordinates, terrainTopCoordinates);
+        _terrainAreaBounds = AreaBounds<Coordinates>.of(terrainBottomCoordinates, terrainTopCoordinates);
     }
 
     private void BuildWorld()
     {
-        var heightmapService = new HeighmapService(worldSize);
-        var heightmapResolution = heightmapService.GetHeightmapResolution();
-        var elevationService = new ElevationService(heightmapResolution);
-        var osmParserService = new OSMParserService();
-        
-        WorldElevationData = elevationService.GetElevationMap(_terrainCoordinateBox);
-        var osmData = new OSMDataService().GetDataForArea(_mapDataCoordinateBox);
-        WorldObjectData = osmParserService.Parse(osmData);
-        var heightmap = heightmapService.GetHeightmapMatrix(WorldElevationData);
+        var heightmap = _heightmapService.GetHeightmapMatrix(_terrainAreaBounds);
+        var osmData = _osmDataService.GetDataForArea(_mapDataAreaBounds);
+        WorldObjectData = _osmParserService.Parse(osmData);
+        var terrainTopPoint = CoordinateMath.CoordinatesToWorldPosition(_terrainAreaBounds.TopPoint.Latitude,
+            _terrainAreaBounds.TopPoint.Longitude);
 
         terrainObject =
-            new TerrainBuilder(heightmap, _terrainCoordinateBox, terrainMaterial).Build();
+            new TerrainBuilder(heightmap, terrainTopPoint, terrainMaterial).Build();
         StartCoroutine("PlaceBuildings");
         StartCoroutine("PlaceRoads");
     }
@@ -110,7 +116,7 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
             List<Vector3> verticePositions = new List<Vector3>();
             mapElement.References.ForEach(reference =>
             {
-                verticePositions.Add(WorldObjectData[reference].Coordinates.Position);
+                verticePositions.Add(WorldObjectData[reference].CoordinatesWithPosition.Position);
             });
             if (verticePositions.Count < 3)
             {
@@ -146,9 +152,9 @@ public class MapObjectPlacementManager : Singleton<MapObjectPlacementManager>
                 continue;
             }
 
-            List<Coordinates> waypoints = new List<Coordinates>();
+            List<CoordinatesWithPosition> waypoints = new List<CoordinatesWithPosition>();
             mapElement.References
-                .ForEach(reference => { waypoints.Add(WorldObjectData[reference].Coordinates); });
+                .ForEach(reference => { waypoints.Add(WorldObjectData[reference].CoordinatesWithPosition); });
 
             List<Vector3> leftVerticePositions = new List<Vector3>();
             List<Vector3> rightVerticePositions = new List<Vector3>();

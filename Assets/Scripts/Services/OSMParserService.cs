@@ -5,12 +5,16 @@ using System.Linq;
 using Domain;
 using Domain.Tuples;
 using JetBrains.Annotations;
+using Services;
 using Utility;
 
 public class OSMParserService
 {
-    public OSMParserService()
+    private SRTMDataService _srtmDataService;
+    
+    public OSMParserService(SRTMDataService srtmDataService)
     {
+        _srtmDataService = srtmDataService;
     }
 
     public Dictionary<MapElement.ID, MapElement> Parse(XElement osmData)
@@ -54,9 +58,11 @@ public class OSMParserService
         double.TryParse(node.Attribute("lon").Value, out var rawLong);
         MapElement.ID id = new MapElement.ID(rawId);
         Coordinates coordinates = Coordinates.of(rawLat, rawLong);
+        double height = _srtmDataService.GetHeight(coordinates);
+        CoordinatesWithPosition coordinatesWithPosition = new CoordinatesWithPosition(coordinates, height);
         List<MapElement.ID> nds = ReadNdData(node);
 
-        return new MapElement(id, coordinates, tags, nds);
+        return new MapElement(id, coordinatesWithPosition, tags, nds);
     }
 
     private MapElement ParseWay(XElement way)
