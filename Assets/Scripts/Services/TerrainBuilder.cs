@@ -41,7 +41,7 @@ namespace Services
             return this;
         }
 
-        public GameObject Build()
+        public Terrain Build()
         {
             var terrainObject = new GameObject("Terrain");
             terrainObject.layer = Parameters.TERRAIN_LAYER;
@@ -62,7 +62,7 @@ namespace Services
             terrain.terrainData = terrainData;
             terrainObject.isStatic = true;
 
-            return terrainObject;
+            return terrain;
         }
     }
 }

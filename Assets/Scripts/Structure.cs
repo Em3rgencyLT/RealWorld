@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Domain;
+using Services;
 using Utility;
 
 public class Structure : MapObject
 {
+    private TerrainHeightService _terrainHeightService;
     private float buildingHeight;
 
     /*Note to future self: the base vertex positions only contain x and z data. First the height for the roof is calculated,
@@ -14,7 +16,9 @@ public class Structure : MapObject
     The highest Y value is chosen for the roof and propagated across all other top vertices, to prevent roofs that slope 
     with the terrain. The lowest point of the terrain is found and propagated across all bottom wall vertices, to prevent 
     floating buildings.*/
-    public void Build(MapElement mapElement, List<Vector3> baseVerticePositions) {
+    public void Build(TerrainHeightService terrainHeightService, MapElement mapElement, List<Vector3> baseVerticePositions)
+    {
+        _terrainHeightService = terrainHeightService;
         mapId = mapElement.Id;
         this.baseVerticePositions = baseVerticePositions;
         buildingHeight = GuessBuildingHeight(mapElement.Data[MapNodeKey.KeyType.Building]);
@@ -35,7 +39,7 @@ public class Structure : MapObject
     private List<Vector3> UnifyStructureRoofLevel(List<Vector3> baseVerticePositions)
     {
         List<Vector3> points = new List<Vector3>();
-        float highestPoint = baseVerticePositions.Max(position => FindTerrainHeight(position) + buildingHeight);
+        float highestPoint = baseVerticePositions.Max(position => _terrainHeightService.GetHeightForPoint(position) + buildingHeight);
         baseVerticePositions.ForEach(point => points.Add(new Vector3(point.x, highestPoint, point.z)));
         return points;
     }
@@ -57,7 +61,7 @@ public class Structure : MapObject
             vertices2D.Add(new Vector2(vertex.x, vertex.z));
         });
         
-        float lowestPoint = baseVerticePositions.Min(position => FindTerrainHeight(position));
+        float lowestPoint = baseVerticePositions.Min(position => _terrainHeightService.GetHeightForPoint(position));
 
         for(int i = 0; i < vertices.Count; i++) {
             int i0 = i;

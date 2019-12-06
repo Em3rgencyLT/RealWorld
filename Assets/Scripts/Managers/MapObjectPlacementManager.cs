@@ -32,6 +32,7 @@ namespace Managers
         private OSMDataService _osmDataService;
         private HeightmapService _heightmapService;
         private OSMParserService _osmParserService;
+        private TerrainHeightService _terrainHeightService;
 
         //TODO: setting the projection origin to something else should also wipe and redraw the entire world
         public Coordinates ProjectionOrigin { get; private set; }
@@ -97,7 +98,8 @@ namespace Managers
             var terrainTopPoint = CoordinateMath.CoordinatesToWorldPosition(_terrainAreaBounds.TopPoint.Latitude,
                 _terrainAreaBounds.TopPoint.Longitude);
 
-            new TerrainBuilder(heightmap, terrainTopPoint, terrainMaterial).Build();
+            Terrain terrain = new TerrainBuilder(heightmap, terrainTopPoint, terrainMaterial).Build();
+            _terrainHeightService = new TerrainHeightService(terrain); //FIXME: should be called in awake, or not be globally available
             StartCoroutine("PlaceBuildings");
             StartCoroutine("PlaceRoads");
         }
@@ -129,7 +131,7 @@ namespace Managers
                     ? "Building"
                     : mapElement.GetAddress();
                 Structure structureScript = structureObject.GetComponent<Structure>();
-                structureScript.Build(mapElement, verticePositions);
+                structureScript.Build(_terrainHeightService, mapElement, verticePositions);
                 built++;
             }
 
@@ -201,7 +203,7 @@ namespace Managers
                         ? "Road"
                         : mapElement.GetRoadName();
                     Road roadScript = roadObject.GetComponent<Road>();
-                    roadScript.Build(mapElement, leftVerticePositions, rightVerticePositions);
+                    roadScript.Build(_terrainHeightService, mapElement, leftVerticePositions, rightVerticePositions);
                     built++;
                 }
 

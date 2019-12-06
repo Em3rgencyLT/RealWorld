@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 using Domain;
+using Services;
 
 [RequireComponent(typeof(MeshRenderer), typeof(MeshFilter))]
 public class Road : MapObject
@@ -8,7 +9,7 @@ public class Road : MapObject
     private List<Vector3> _leftVerticePositions;
     private List<Vector3> _rightVerticePositions;
     
-    public void Build(MapElement mapElement, List<Vector3> leftVerticePositions, List<Vector3> rightVerticePositions) {
+    public void Build(TerrainHeightService terrainHeightService, MapElement mapElement, List<Vector3> leftVerticePositions, List<Vector3> rightVerticePositions) {
         mapId = mapElement.Id;
         _leftVerticePositions = leftVerticePositions;
         _rightVerticePositions = rightVerticePositions;
@@ -31,6 +32,12 @@ public class Road : MapObject
             Vector3 topLeft = _leftVerticePositions[i + 1];
             Vector3 topRight = _rightVerticePositions[i + 1];
             Vector3 botRight = _rightVerticePositions[i];
+
+            //FIXME: probably want to do this earlier
+            botLeft.y = terrainHeightService.GetHeightForPoint(botLeft) + 0.3f;
+            topLeft.y = terrainHeightService.GetHeightForPoint(topLeft) + 0.3f;
+            topRight.y = terrainHeightService.GetHeightForPoint(topRight) + 0.3f;
+            botRight.y = terrainHeightService.GetHeightForPoint(botRight) + 0.3f;
             
             Vector2 v2BotLeft = new Vector2(botLeft.x, botLeft.z);
             Vector2 v2topLeft = new Vector2(topLeft.x, topLeft.z);
