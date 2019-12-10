@@ -1,20 +1,22 @@
+using Services;
 using UnityEngine;
 using Utility;
 
 namespace Domain {
-    [System.Serializable]
-    public class CoordinatesWithPosition {
-        [SerializeField]
+    public class CoordinatesWithPosition
+    {
+        private CoordinatePositionService _coordinatePositionService;
         private Coordinates _coordinates;
-        [SerializeField]
         private Vector3 _position;
 
         public Coordinates Coordinates => _coordinates;
         public Vector3 Position => _position;
 
-        public CoordinatesWithPosition(Coordinates coordinates, double height) {
+        public CoordinatesWithPosition(CoordinatePositionService coordinatePositionService, Coordinates coordinates, double height)
+        {
+            _coordinatePositionService = coordinatePositionService;
             _coordinates = coordinates;
-            Vector3 lateralPosition = CoordinateMath.CoordinatesToWorldPosition(coordinates.Latitude, coordinates.Longitude);
+            Vector3 lateralPosition = _coordinatePositionService.PositionFromCoordinates(coordinates);
             _position = new Vector3(lateralPosition.x, (float)height, lateralPosition.z);
         }
 

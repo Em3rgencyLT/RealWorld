@@ -25,17 +25,17 @@ namespace Managers
         private AreaBounds<Coordinates> _terrainAreaBounds;
         [SerializeField] private GameObject structurePrefab;
         [SerializeField] private GameObject roadPrefab;
+        [SerializeField] private PlayerSpawner _playerSpawner;
         private GameObject _structureParentObject;
         private GameObject _roadParentObject;
 
+        private CoordinatePositionService _coordinatePositionService;
         private SRTMDataService _srtmDataService;
         private OSMDataService _osmDataService;
         private HeightmapService _heightmapService;
         private OSMParserService _osmParserService;
         private TerrainHeightService _terrainHeightService;
 
-        //TODO: setting the projection origin to something else should also wipe and redraw the entire world
-        public Coordinates ProjectionOrigin { get; private set; }
         public Coordinates MapObjectOrigin { get; private set; }
 
         public Dictionary<MapElement.ID, MapElement> WorldObjectData { get; private set; }
@@ -44,13 +44,17 @@ namespace Managers
         {
             //Make sure doubles accept . for decimal instead of ,
             System.Threading.Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
+            
+            var offset = worldSize * Parameters.WORLD_SIZE_MULTIPLIER;
+            var projectionOrigin = Coordinates.of(locationLatitude - offset, locationLongitude - offset);
         
+            _coordinatePositionService = new CoordinatePositionService(projectionOrigin);
             _srtmDataService = new SRTMDataService();
             _osmDataService = new OSMDataService();
             _heightmapService = new HeightmapService(worldSize, _srtmDataService);
-            _osmParserService = new OSMParserService(_srtmDataService);
+            _osmParserService = new OSMParserService(_srtmDataService, _coordinatePositionService);
         
-            SetupAreas();
+            SetupAreas(offset);
 
             //get rid of the private field not set warnings and throw proper errors if they actually aren't set
             if (structurePrefab == null)
@@ -71,12 +75,13 @@ namespace Managers
         void Start()
         {
             BuildWorld();
+            var centerCoordinates = Coordinates.of(locationLatitude, locationLongitude);
+            var playerPosition = _coordinatePositionService.GetCoordinatesWithPosition(centerCoordinates, 300).Position;
+            _playerSpawner.SpawnPlayer(playerPosition);
         }
 
-        private void SetupAreas()
+        private void SetupAreas(float offset)
         {
-            float offset = worldSize * Parameters.WORLD_SIZE_MULTIPLIER;
-            ProjectionOrigin = Coordinates.of(locationLatitude - offset, locationLongitude - offset);
             MapObjectOrigin = Coordinates.of(locationLatitude - offset / 2, locationLongitude - offset / 2);
 
             Coordinates mapDataBottomCoordinates = MapObjectOrigin;
@@ -84,9 +89,9 @@ namespace Managers
                 Coordinates.of(MapObjectOrigin.Latitude + offset, MapObjectOrigin.Longitude + offset);
             _mapDataAreaBounds = AreaBounds<Coordinates>.of(mapDataBottomCoordinates, mapDataTopCoordinates);
 
-            Coordinates terrainBottomCoordinates = ProjectionOrigin;
+            Coordinates terrainBottomCoordinates = _coordinatePositionService.ProjectionOrigin;
             Coordinates terrainTopCoordinates =
-                Coordinates.of(ProjectionOrigin.Latitude + offset * 2, ProjectionOrigin.Longitude + offset * 2);
+                Coordinates.of(terrainBottomCoordinates.Latitude + offset * 2, terrainBottomCoordinates.Longitude + offset * 2);
             _terrainAreaBounds = AreaBounds<Coordinates>.of(terrainBottomCoordinates, terrainTopCoordinates);
         }
 
@@ -95,8 +100,7 @@ namespace Managers
             var heightmap = _heightmapService.GetHeightmapMatrix(_terrainAreaBounds);
             var osmData = _osmDataService.GetDataForArea(_mapDataAreaBounds);
             WorldObjectData = _osmParserService.Parse(osmData);
-            var terrainTopPoint = CoordinateMath.CoordinatesToWorldPosition(_terrainAreaBounds.TopPoint.Latitude,
-                _terrainAreaBounds.TopPoint.Longitude);
+            var terrainTopPoint = _coordinatePositionService.PositionFromCoordinates(_terrainAreaBounds.TopPoint);
 
             Terrain terrain = new TerrainBuilder(heightmap, terrainTopPoint, terrainMaterial).Build();
             _terrainHeightService = new TerrainHeightService(terrain); //FIXME: should be called in awake, or not be globally available

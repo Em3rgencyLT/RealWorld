@@ -11,10 +11,12 @@ using Utility;
 public class OSMParserService
 {
     private SRTMDataService _srtmDataService;
+    private CoordinatePositionService _coordinatePositionService;
     
-    public OSMParserService(SRTMDataService srtmDataService)
+    public OSMParserService(SRTMDataService srtmDataService, CoordinatePositionService coordinatePositionService)
     {
         _srtmDataService = srtmDataService;
+        _coordinatePositionService = coordinatePositionService;
     }
 
     public Dictionary<MapElement.ID, MapElement> Parse(XElement osmData)
@@ -59,7 +61,7 @@ public class OSMParserService
         MapElement.ID id = new MapElement.ID(rawId);
         Coordinates coordinates = Coordinates.of(rawLat, rawLong);
         double height = _srtmDataService.GetHeight(coordinates);
-        CoordinatesWithPosition coordinatesWithPosition = new CoordinatesWithPosition(coordinates, height);
+        CoordinatesWithPosition coordinatesWithPosition = _coordinatePositionService.GetCoordinatesWithPosition(coordinates, height);
         List<MapElement.ID> nds = ReadNdData(node);
 
         return new MapElement(id, coordinatesWithPosition, tags, nds);
