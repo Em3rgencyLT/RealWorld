@@ -1,7 +1,7 @@
+using System.Net;
 using Domain;
-using Domain.Tuples;
 using SRTM;
-using UnityEngine;
+using SRTM.Sources.NASA;
 using Utility;
 
 namespace Services
@@ -12,7 +12,8 @@ namespace Services
         
         public SRTMDataService()
         {
-            _srtmData = new SRTMData(FolderPaths.SRTMData);
+            var credentials = new NetworkCredential(Parameters.NASA_SRTM_USERNAME, Parameters.NASA_SRTM_PASSWORD);
+            _srtmData = new SRTMData(FolderPaths.SRTMData, new NASASource(credentials));
         }
 
         public double GetHeight(Coordinates coordinates)
