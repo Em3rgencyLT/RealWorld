@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using Domain;
 using Domain.Tuples;
 using Services;
@@ -28,6 +29,8 @@ namespace Managers
         [SerializeField] private PlayerSpawner _playerSpawner;
         private GameObject _structureParentObject;
         private GameObject _roadParentObject;
+        private GameObject _terrainParentObject;
+        private GameObject _playerObject;
 
         private CoordinatePositionService _coordinatePositionService;
         private SRTMDataService _srtmDataService;
@@ -35,6 +38,8 @@ namespace Managers
         private HeightmapService _heightmapService;
         private OSMParserService _osmParserService;
         private TerrainHeightService _terrainHeightService;
+
+        private List<TerrainChunk> _terrainChunks = new List<TerrainChunk>();
 
         public Coordinates MapObjectOrigin { get; private set; }
 
@@ -45,16 +50,15 @@ namespace Managers
             //Make sure doubles accept . for decimal instead of ,
             System.Threading.Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
             
-            var offset = worldSize * Parameters.WORLD_SIZE_MULTIPLIER;
-            var projectionOrigin = Coordinates.of(locationLatitude - offset, locationLongitude - offset);
+            var worldCenter = Coordinates.of(locationLatitude, locationLongitude);
         
-            _coordinatePositionService = new CoordinatePositionService(projectionOrigin);
+            _coordinatePositionService = new CoordinatePositionService(worldCenter);
             _srtmDataService = new SRTMDataService();
             _osmDataService = new OSMDataService();
-            _heightmapService = new HeightmapService(worldSize, _srtmDataService);
+            _heightmapService = new HeightmapService(_srtmDataService);
             _osmParserService = new OSMParserService(_srtmDataService, _coordinatePositionService);
         
-            SetupAreas(offset);
+            SetupAreas();
 
             //get rid of the private field not set warnings and throw proper errors if they actually aren't set
             if (structurePrefab == null)
@@ -74,14 +78,58 @@ namespace Managers
 
         void Start()
         {
-            BuildWorld();
+            //BuildWorld();
             var centerCoordinates = Coordinates.of(locationLatitude, locationLongitude);
             var playerPosition = _coordinatePositionService.GetCoordinatesWithPosition(centerCoordinates, 300).Position;
-            _playerSpawner.SpawnPlayer(playerPosition);
+            _playerObject = _playerSpawner.SpawnPlayer(playerPosition);
+            _terrainParentObject = new GameObject("Terrain");
         }
 
-        private void SetupAreas(float offset)
+        private void Update()
         {
+            Vector3 playerPosition = _playerObject.transform.position;
+            int playerChunkPositionX = (int)Mathf.Floor(playerPosition.x / Parameters.CHUNK_SIZE);
+            int playerChunkPositionY = (int)Mathf.Floor(playerPosition.z / Parameters.CHUNK_SIZE);
+
+            for (int i = playerChunkPositionX - Parameters.TERRAIN_CHUNK_DISTANCE;
+                i < playerChunkPositionX + Parameters.TERRAIN_CHUNK_DISTANCE;
+                i++)
+            {
+                for (int j = playerChunkPositionY - Parameters.TERRAIN_CHUNK_DISTANCE;
+                    j < playerChunkPositionY + Parameters.TERRAIN_CHUNK_DISTANCE;
+                    j++)
+                {
+                    if (_terrainChunks.Any(chunk => chunk.X == i && chunk.Y == j))
+                    {
+                        continue;
+                    }
+
+                    int chunkXmin = i * Parameters.CHUNK_SIZE - Parameters.CHUNK_SIZE / 2;
+                    int chunkYmin = j * Parameters.CHUNK_SIZE - Parameters.CHUNK_SIZE / 2;
+                    int chunkXmax = i * Parameters.CHUNK_SIZE + Parameters.CHUNK_SIZE / 2;
+                    int chunkYmax = j * Parameters.CHUNK_SIZE + Parameters.CHUNK_SIZE / 2;
+                    
+                    Vector3 minPoint = new Vector3(chunkXmin, 0f, chunkYmin);
+                    Vector3 maxPoint = new Vector3(chunkXmax, 0f, chunkYmax);
+
+                    Coordinates minCoordinates = _coordinatePositionService.CoordinatesFromPosition(minPoint);
+                    Coordinates maxCoordinates = _coordinatePositionService.CoordinatesFromPosition(maxPoint);
+                    
+                    AreaBounds<Coordinates> terrainAreaBounds = AreaBounds<Coordinates>.of(minCoordinates, maxCoordinates);
+
+                    var heightmap = _heightmapService.GetHeightmapMatrix(terrainAreaBounds);
+                    var terrain = new TerrainBuilder(terrainMaterial).Build($"Terrain X:{i} Y:{j}" ,heightmap, Vector3.Lerp(minPoint, maxPoint, 0.5f));
+
+                    terrain.transform.parent = _terrainParentObject.transform;
+                    var terrainChunk = new TerrainChunk(i, j, terrain);
+                    _terrainChunks.Add(terrainChunk);
+                }
+            }
+        }
+
+        private void SetupAreas()
+        {
+            var offset = worldSize * Parameters.WORLD_SIZE_MULTIPLIER;
             MapObjectOrigin = Coordinates.of(locationLatitude - offset / 2, locationLongitude - offset / 2);
 
             Coordinates mapDataBottomCoordinates = MapObjectOrigin;
@@ -89,7 +137,7 @@ namespace Managers
                 Coordinates.of(MapObjectOrigin.Latitude + offset, MapObjectOrigin.Longitude + offset);
             _mapDataAreaBounds = AreaBounds<Coordinates>.of(mapDataBottomCoordinates, mapDataTopCoordinates);
 
-            Coordinates terrainBottomCoordinates = _coordinatePositionService.ProjectionOrigin;
+            Coordinates terrainBottomCoordinates = _coordinatePositionService.WorldCenter;
             Coordinates terrainTopCoordinates =
                 Coordinates.of(terrainBottomCoordinates.Latitude + offset * 2, terrainBottomCoordinates.Longitude + offset * 2);
             _terrainAreaBounds = AreaBounds<Coordinates>.of(terrainBottomCoordinates, terrainTopCoordinates);
@@ -102,10 +150,10 @@ namespace Managers
             WorldObjectData = _osmParserService.Parse(osmData);
             var terrainTopPoint = _coordinatePositionService.PositionFromCoordinates(_terrainAreaBounds.TopPoint);
 
-            Terrain terrain = new TerrainBuilder(heightmap, terrainTopPoint, terrainMaterial).Build();
-            _terrainHeightService = new TerrainHeightService(terrain); //FIXME: should be called in awake, or not be globally available
-            StartCoroutine("PlaceBuildings");
-            StartCoroutine("PlaceRoads");
+            //Terrain terrain = new TerrainBuilder(heightmap, terrainTopPoint, terrainMaterial).Build();
+            //_terrainHeightService = new TerrainHeightService(terrain); //FIXME: should be called in awake, or not be globally available
+            //StartCoroutine("PlaceBuildings");
+            //StartCoroutine("PlaceRoads");
         }
 
         private IEnumerator PlaceBuildings()

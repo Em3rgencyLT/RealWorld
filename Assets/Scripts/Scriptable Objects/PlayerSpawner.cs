@@ -5,8 +5,8 @@ public class PlayerSpawner : ScriptableObject
 {
     [SerializeField] private GameObject _playerPrefab;
 
-    public void SpawnPlayer(Vector3 position)
+    public GameObject SpawnPlayer(Vector3 position)
     {
-        Instantiate(_playerPrefab, position, Quaternion.identity);
+        return Instantiate(_playerPrefab, position, Quaternion.identity);
     }
 }

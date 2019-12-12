@@ -10,23 +10,17 @@ namespace Services
         private int _heightmapResolution;
         private SRTMDataService _srtmDataService;
 
-        public HeightmapService(int worldSize, SRTMDataService srtmDataService)
+        public HeightmapService(SRTMDataService srtmDataService)
         {
-            int worldSizeModifier = worldSize - worldSize % 2;
-            //Unity Terrain constraint. Heightmap must be a power of 2, plus 1.
-            _heightmapResolution = (int) Math.Pow(2, Parameters.HEIGHTMAP_RESOLUTION_BASE_POWER + worldSizeModifier) + 1;
+            _heightmapResolution = 33;
             _srtmDataService = srtmDataService;
         }
 
         /**
          * Heightmaps are expected to be a 2D array of values from 0 to 1.
          */
-        //FIXME: coordinate box should always be the same size. Once chunk size is established, this method should receive a single origin coordinate only.
         public float[,] GetHeightmapMatrix(AreaBounds<Coordinates> areaBounds)
-        {
-            Debug.Log(
-                $"Requesting elevation data from {areaBounds.BottomPoint} to {areaBounds.TopPoint}.");
-            
+        {   
             var heightmap = new float[_heightmapResolution, _heightmapResolution];
             
             var bottomCoordinates = areaBounds.BottomPoint;
