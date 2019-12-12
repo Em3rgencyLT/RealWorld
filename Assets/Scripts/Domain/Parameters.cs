@@ -11,5 +11,8 @@ namespace Domain
         public static readonly float WORLD_SIZE_MULTIPLIER = 0.006f;
         public static readonly int HEIGHTMAP_RESOLUTION_BASE_POWER = 3;
         public static readonly int TERRAIN_LAYER = 15;
+        public static readonly int CHUNK_SIZE = 100;
+        public static readonly int TERRAIN_CHUNK_DISTANCE = 10;
+        public static readonly int MAP_CHUNK_DISTANCE = 5;
     }
 }

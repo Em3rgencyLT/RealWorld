@@ -7,13 +7,13 @@ namespace Services {
     {
         private const double EARTH_RADIUS_KILOMETERS = 6378.137;
 
-        private Coordinates _projectionOrigin;
+        private Coordinates _worldCenter;
 
-        public Coordinates ProjectionOrigin => _projectionOrigin;
+        public Coordinates WorldCenter => _worldCenter;
 
-        public CoordinatePositionService(Coordinates projectionOrigin)
+        public CoordinatePositionService(Coordinates worldCenter)
         {
-            _projectionOrigin = projectionOrigin;
+            _worldCenter = worldCenter;
         }
 
         public CoordinatesWithPosition GetCoordinatesWithPosition(Coordinates coordinates, double height)
@@ -22,17 +22,17 @@ namespace Services {
         }
 
         public Vector3 PositionFromCoordinates(Coordinates coordinates) {
-            double x = (coordinates.Longitude - _projectionOrigin.Longitude) * (ToRadian(EARTH_RADIUS_KILOMETERS) * Math.Cos(ToRadian(coordinates.Latitude))) * 1000;
-            double y = (coordinates.Latitude - _projectionOrigin.Latitude) * ToRadian(EARTH_RADIUS_KILOMETERS) * 1000;
+            double x = (coordinates.Longitude - _worldCenter.Longitude) * (ToRadian(EARTH_RADIUS_KILOMETERS) * Math.Cos(ToRadian(coordinates.Latitude))) * 1000;
+            double y = (coordinates.Latitude - _worldCenter.Latitude) * ToRadian(EARTH_RADIUS_KILOMETERS) * 1000;
 
             return new Vector3((float)x, 0f, (float)y);
         }
 
         public Coordinates CoordinatesFromPosition(Vector3 position)
         {
-            double latitude = position.z / (ToRadian(EARTH_RADIUS_KILOMETERS) * 1000) + _projectionOrigin.Latitude;
+            double latitude = position.z / (ToRadian(EARTH_RADIUS_KILOMETERS) * 1000) + _worldCenter.Latitude;
             double longitude = position.x / (ToRadian(EARTH_RADIUS_KILOMETERS) * Math.Cos(ToRadian(latitude)) * 1000) +
-                               _projectionOrigin.Longitude;
+                               _worldCenter.Longitude;
             
             return Coordinates.of(latitude, longitude);
         }

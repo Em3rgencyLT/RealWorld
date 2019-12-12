@@ -7,19 +7,14 @@ namespace Services
 {
     public class TerrainBuilder
     {
-        private Vector3 _terrainAreaTopPoint;
-        private float[,] _heightmap;
-
         //FIXME: should have a fancy multi-texture terrain thingy
         private Material _material;
         private int _baseMapResolution = 1024;
         private int _detailResolution = 1024;
         private int _resolutionPerPatch = 32;
 
-        public TerrainBuilder(float[,] heightmap, Vector3 terrainAreaTopPoint, Material material)
+        public TerrainBuilder(Material material)
         {
-            _heightmap = heightmap;
-            _terrainAreaTopPoint = terrainAreaTopPoint;
             _material = material;
         }
 
@@ -41,21 +36,23 @@ namespace Services
             return this;
         }
 
-        public Terrain Build()
+        public Terrain Build(string name, float[,] heightmap, Vector3 position)
         {
-            var terrainObject = new GameObject("Terrain");
+            var terrainObject = new GameObject(name);
+            terrainObject.transform.position = position;
             terrainObject.layer = Parameters.TERRAIN_LAYER;
 
             TerrainData terrainData = new TerrainData();
-            terrainData.heightmapResolution = _heightmap.GetLength(0);
+            terrainData.heightmapResolution = heightmap.GetLength(0);
             terrainData.baseMapResolution = _baseMapResolution;
             terrainData.SetDetailResolution(_detailResolution, _resolutionPerPatch);
             terrainData.size =
-                new Vector3(_terrainAreaTopPoint.x, 8848f, _terrainAreaTopPoint.z);
-            terrainData.SetHeights(0, 0, _heightmap);
+                new Vector3(Parameters.CHUNK_SIZE, 8848f, Parameters.CHUNK_SIZE);
+            terrainData.SetHeights(0, 0, heightmap);
 
             TerrainCollider terrainCollider = terrainObject.AddComponent<TerrainCollider>();
             Terrain terrain = terrainObject.AddComponent<Terrain>();
+            terrain.allowAutoConnect = true;
             terrain.materialTemplate = _material;
 
             terrainCollider.terrainData = terrainData;
