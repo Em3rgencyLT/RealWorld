@@ -6,6 +6,8 @@
 Assets/AssetStoreTools*
 Assets/SRTMData/*.zip
 Assets/SRTMData/*.meta
+Assets/OSMData/*.osm
+Assets/OSMData/*.meta
 
 #Intellij cache
 .idea/
