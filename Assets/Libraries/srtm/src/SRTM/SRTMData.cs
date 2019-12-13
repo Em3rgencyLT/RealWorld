@@ -20,7 +20,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using SRTM.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -109,6 +108,22 @@ namespace SRTM
         /// </exception>
         public int? GetElevation(double latitude, double longitude)
         {
+            ISRTMDataCell dataCell = GetDataCell(latitude, longitude);
+            return dataCell.GetElevation(latitude, longitude);
+        }
+
+        public double? GetElevationBilinear(double latitude, double longitude)
+        {
+            ISRTMDataCell dataCell = GetDataCell(latitude, longitude);
+            return dataCell.GetElevationBilinear(latitude, longitude);
+        }
+
+        #endregion
+        
+        #region Private methods
+
+        private ISRTMDataCell GetDataCell(double latitude, double longitude)
+        {
             int cellLatitude = (int)Math.Floor(Math.Abs(latitude));
             if (latitude < 0)
             {
@@ -131,7 +146,9 @@ namespace SRTM
 
             var dataCell = DataCells.Where(dc => dc.Latitude == cellLatitude && dc.Longitude == cellLongitude).FirstOrDefault();
             if (dataCell != null)
-                return dataCell.GetElevation(latitude, longitude);
+            {
+                return dataCell;
+            }
 
             string filename = string.Format("{0}{1:D2}{2}{3:D3}",
                 cellLatitude < 0 ? "S" : "N",
@@ -192,14 +209,11 @@ namespace SRTM
                     dataCell = new EmptySRTMDataCell(txtFilePath);
                 }
             }
-            
-            // add to cells.
             DataCells.Add(dataCell);
 
-            // return requested elevation.
-            return dataCell.GetElevation(latitude, longitude);
+            return dataCell;
         }
-
+        
         #endregion
     }
 }

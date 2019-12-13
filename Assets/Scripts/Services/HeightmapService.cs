@@ -12,7 +12,7 @@ namespace Services
 
         public HeightmapService(SRTMDataService srtmDataService)
         {
-            _heightmapResolution = 33;
+            _heightmapResolution = 129;
             _srtmDataService = srtmDataService;
         }
 
@@ -26,7 +26,7 @@ namespace Services
             var bottomCoordinates = areaBounds.BottomPoint;
             var topCoordinates = areaBounds.TopPoint;
             double stepLat = (topCoordinates.Latitude - bottomCoordinates.Latitude) / _heightmapResolution;
-            double stepLong = (topCoordinates.Longitude - bottomCoordinates.Longitude) / _heightmapResolution;
+            double stepLong = (topCoordinates.Longitude - bottomCoordinates.Longitude) / _heightmapResolution;         
 
             for (int i = 0; i < _heightmapResolution; i++)
             {

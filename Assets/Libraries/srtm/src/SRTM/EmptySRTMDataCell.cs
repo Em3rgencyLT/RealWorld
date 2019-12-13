@@ -37,5 +37,10 @@ namespace SRTM
         {
             return null;
         }
+
+        public double? GetElevationBilinear(double latitude, double longitude)
+        {
+            return null;
+        }
     }
 }

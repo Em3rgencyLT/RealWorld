@@ -44,5 +44,7 @@ namespace SRTM
         /// Represents errors that occur during application execution.
         /// </exception>
         int? GetElevation(double latitude, double longitude);
+        
+        double? GetElevationBilinear(double latitude, double longitude);
     }
 }
