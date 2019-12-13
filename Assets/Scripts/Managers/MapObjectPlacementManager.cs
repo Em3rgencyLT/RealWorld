@@ -22,8 +22,8 @@ namespace Managers
         [SerializeField] [Range(2,5)] private int worldSize = 1;
         [SerializeField] private Material terrainMaterial;
 
-        private AreaBounds<Coordinates> _mapDataAreaBounds;
-        private AreaBounds<Coordinates> _terrainAreaBounds;
+        private Bounds<Coordinates> _mapDataBounds;
+        private Bounds<Coordinates> _terrainBounds;
         [SerializeField] private GameObject structurePrefab;
         [SerializeField] private GameObject roadPrefab;
         [SerializeField] private PlayerSpawner _playerSpawner;
@@ -37,9 +37,10 @@ namespace Managers
         private OSMDataService _osmDataService;
         private HeightmapService _heightmapService;
         private OSMParserService _osmParserService;
-        private TerrainHeightService _terrainHeightService;
+        private PlayerChunkService _playerChunkService;
 
-        private List<TerrainChunk> _terrainChunks = new List<TerrainChunk>();
+        private List<Chunk<Terrain>> _terrainChunks = new List<Chunk<Terrain>>();
+        private List<Chunk<List<MapObject>>> _mapObjectChunks = new List<Chunk<List<MapObject>>>();
 
         public Coordinates MapObjectOrigin { get; private set; }
 
@@ -82,49 +83,18 @@ namespace Managers
             var centerCoordinates = Coordinates.of(locationLatitude, locationLongitude);
             var playerPosition = _coordinatePositionService.GetCoordinatesWithPosition(centerCoordinates, 300).Position;
             _playerObject = _playerSpawner.SpawnPlayer(playerPosition);
+            _playerChunkService = new PlayerChunkService(_playerObject);
             _terrainParentObject = new GameObject("Terrain");
+            _structureParentObject = new GameObject("Structures");
+            _roadParentObject = new GameObject("Roads");
         }
 
         private void Update()
         {
-            Vector3 playerPosition = _playerObject.transform.position;
-            int playerChunkPositionX = (int)Mathf.Floor(playerPosition.x / Parameters.CHUNK_SIZE);
-            int playerChunkPositionY = (int)Mathf.Floor(playerPosition.z / Parameters.CHUNK_SIZE);
+            Vector2 playerChunkPosition = _playerChunkService.GetPlayerChunkCoordinates();
 
-            for (int i = playerChunkPositionX - Parameters.TERRAIN_CHUNK_DISTANCE;
-                i < playerChunkPositionX + Parameters.TERRAIN_CHUNK_DISTANCE;
-                i++)
-            {
-                for (int j = playerChunkPositionY - Parameters.TERRAIN_CHUNK_DISTANCE;
-                    j < playerChunkPositionY + Parameters.TERRAIN_CHUNK_DISTANCE;
-                    j++)
-                {
-                    if (_terrainChunks.Any(chunk => chunk.X == i && chunk.Y == j))
-                    {
-                        continue;
-                    }
-
-                    int chunkXmin = i * Parameters.CHUNK_SIZE - Parameters.CHUNK_SIZE / 2;
-                    int chunkYmin = j * Parameters.CHUNK_SIZE - Parameters.CHUNK_SIZE / 2;
-                    int chunkXmax = i * Parameters.CHUNK_SIZE + Parameters.CHUNK_SIZE / 2;
-                    int chunkYmax = j * Parameters.CHUNK_SIZE + Parameters.CHUNK_SIZE / 2;
-                    
-                    Vector3 minPoint = new Vector3(chunkXmin, 0f, chunkYmin);
-                    Vector3 maxPoint = new Vector3(chunkXmax, 0f, chunkYmax);
-
-                    Coordinates minCoordinates = _coordinatePositionService.CoordinatesFromPosition(minPoint);
-                    Coordinates maxCoordinates = _coordinatePositionService.CoordinatesFromPosition(maxPoint);
-                    
-                    AreaBounds<Coordinates> terrainAreaBounds = AreaBounds<Coordinates>.of(minCoordinates, maxCoordinates);
-
-                    var heightmap = _heightmapService.GetHeightmapMatrix(terrainAreaBounds);
-                    var terrain = new TerrainBuilder(terrainMaterial).Build($"Terrain X:{i} Y:{j}" ,heightmap, Vector3.Lerp(minPoint, maxPoint, 0.5f));
-
-                    terrain.transform.parent = _terrainParentObject.transform;
-                    var terrainChunk = new TerrainChunk(i, j, terrain);
-                    _terrainChunks.Add(terrainChunk);
-                }
-            }
+            UpdateTerrainChunks((int) playerChunkPosition.x, (int) playerChunkPosition.y);
+            UpdateMapObjectChunks((int) playerChunkPosition.x, (int) playerChunkPosition.y);
         }
 
         private void SetupAreas()
@@ -135,70 +105,98 @@ namespace Managers
             Coordinates mapDataBottomCoordinates = MapObjectOrigin;
             Coordinates mapDataTopCoordinates =
                 Coordinates.of(MapObjectOrigin.Latitude + offset, MapObjectOrigin.Longitude + offset);
-            _mapDataAreaBounds = AreaBounds<Coordinates>.of(mapDataBottomCoordinates, mapDataTopCoordinates);
+            _mapDataBounds = Bounds<Coordinates>.of(mapDataBottomCoordinates, mapDataTopCoordinates);
 
             Coordinates terrainBottomCoordinates = _coordinatePositionService.WorldCenter;
             Coordinates terrainTopCoordinates =
                 Coordinates.of(terrainBottomCoordinates.Latitude + offset * 2, terrainBottomCoordinates.Longitude + offset * 2);
-            _terrainAreaBounds = AreaBounds<Coordinates>.of(terrainBottomCoordinates, terrainTopCoordinates);
+            _terrainBounds = Bounds<Coordinates>.of(terrainBottomCoordinates, terrainTopCoordinates);
         }
 
-        private void BuildWorld()
+        private void UpdateTerrainChunks(int playerChunkX, int playerChunkY)
         {
-            var heightmap = _heightmapService.GetHeightmapMatrix(_terrainAreaBounds);
-            var osmData = _osmDataService.GetDataForArea(_mapDataAreaBounds);
-            WorldObjectData = _osmParserService.Parse(osmData);
-            var terrainTopPoint = _coordinatePositionService.PositionFromCoordinates(_terrainAreaBounds.TopPoint);
+            for (int i = playerChunkX - Parameters.TERRAIN_CHUNK_UNIT_RADIUS;
+                i < playerChunkX + Parameters.TERRAIN_CHUNK_UNIT_RADIUS;
+                i++)
+            {
+                for (int j = playerChunkY - Parameters.TERRAIN_CHUNK_UNIT_RADIUS;
+                    j < playerChunkY + Parameters.TERRAIN_CHUNK_UNIT_RADIUS;
+                    j++)
+                {
+                    if (_terrainChunks.Any(chunk => chunk.X == i && chunk.Y == j))
+                    {
+                        continue;
+                    }
 
-            //Terrain terrain = new TerrainBuilder(heightmap, terrainTopPoint, terrainMaterial).Build();
-            //_terrainHeightService = new TerrainHeightService(terrain); //FIXME: should be called in awake, or not be globally available
-            //StartCoroutine("PlaceBuildings");
-            //StartCoroutine("PlaceRoads");
+                    Bounds<Vector3> chunkBounds = ChunkHelper.GetChunkBounds(i, j);
+                    Coordinates minCoordinates = _coordinatePositionService.CoordinatesFromPosition(chunkBounds.MinPoint);
+                    Coordinates maxCoordinates = _coordinatePositionService.CoordinatesFromPosition(chunkBounds.MaxPoint);
+                    Bounds<Coordinates> terrainBounds = Bounds<Coordinates>.of(minCoordinates, maxCoordinates);
+
+                    var heightmap = _heightmapService.GetHeightmapMatrix(terrainBounds);
+                    var terrain = new TerrainBuilder(terrainMaterial).Build($"Terrain X:{i} Y:{j}" ,heightmap, chunkBounds.MinPoint);
+
+                    terrain.transform.parent = _terrainParentObject.transform;
+                    var terrainChunk = new Chunk<Terrain>(i, j, terrain);
+                    _terrainChunks.Add(terrainChunk);
+                }
+            }
         }
 
-        private IEnumerator PlaceBuildings()
+        private void UpdateMapObjectChunks(int playerChunkX, int playerChunkY)
         {
-            int built = 0;
-            _structureParentObject = new GameObject("Structures");
-            foreach (MapElement mapElement in WorldObjectData.Values)
+            for (int i = playerChunkX - Parameters.MAP_CHUNK_UNIT_RADIUS;
+                i < playerChunkX + Parameters.MAP_CHUNK_UNIT_RADIUS;
+                i++)
             {
-                if (!mapElement.Data.ContainsKey(MapNodeKey.KeyType.Building))
+                for (int j = playerChunkY - Parameters.MAP_CHUNK_UNIT_RADIUS;
+                    j < playerChunkY + Parameters.MAP_CHUNK_UNIT_RADIUS;
+                    j++)
                 {
-                    continue;
+                    if (_mapObjectChunks.Any(chunk => chunk.X == i && chunk.Y == j))
+                    {
+                        continue;
+                    }
+
+                    Terrain terrain = _terrainChunks.Find(chunk => chunk.X == i && chunk.Y == j).Data;
+                    if (terrain == null)
+                    {
+                        throw new Exception($"Could not find terrain for chunk X:{i} Y:{j}");
+                    }
+                    
+                    var heightService = new TerrainHeightService(terrain);
+                    
+                    Bounds<Vector3> chunkBounds = ChunkHelper.GetChunkBounds(i, j);
+                    Coordinates minCoordinates = _coordinatePositionService.CoordinatesFromPosition(chunkBounds.MinPoint);
+                    Coordinates maxCoordinates = _coordinatePositionService.CoordinatesFromPosition(chunkBounds.MaxPoint);
+                    Bounds<Coordinates> mapDataBounds = Bounds<Coordinates>.of(minCoordinates, maxCoordinates);
+
+                    var osmData = _osmDataService.GetDataForArea(mapDataBounds);
+                    var parsedData = _osmParserService.Parse(osmData);
+                    var vertexData = StructureVertexHelper.GetStructuresWithVertices(parsedData);
+                    var structures = new List<MapObject>();
+                    foreach (StructureWithVertices structureWithVertices in vertexData)
+                    {
+                        MapElement mapElement = structureWithVertices.MapElement;
+                        GameObject structureObject = Instantiate(structurePrefab, _structureParentObject.transform);
+                        structureObject.name = string.IsNullOrWhiteSpace(mapElement.GetAddress())
+                            ? "Building"
+                            : mapElement.GetAddress();
+                        Structure structureScript = structureObject.GetComponent<Structure>();
+                        structureScript.Build(heightService, mapElement, structureWithVertices.Vertices);
+                        structures.Add(structureScript);
+                    }
+                    
+                    var mapObjectChunk = new Chunk<List<MapObject>>(i, j, structures);
+                    _mapObjectChunks.Add(mapObjectChunk);
                 }
-
-                List<Vector3> verticePositions = new List<Vector3>();
-                mapElement.References.ForEach(reference =>
-                {
-                    verticePositions.Add(WorldObjectData[reference].CoordinatesWithPosition.Position);
-                });
-                if (verticePositions.Count < 3)
-                {
-                    continue;
-                }
-
-                verticePositions.RemoveAt(verticePositions.Count - 1);
-                GameObject structureObject = Instantiate(structurePrefab, _structureParentObject.transform);
-                structureObject.name = string.IsNullOrWhiteSpace(mapElement.GetAddress())
-                    ? "Building"
-                    : mapElement.GetAddress();
-                Structure structureScript = structureObject.GetComponent<Structure>();
-                structureScript.Build(_terrainHeightService, mapElement, verticePositions);
-                built++;
             }
-
-            if (built % 500 == 0)
-            {
-                yield return null;
-            }
-
-            yield return null;
         }
 
         private IEnumerator PlaceRoads()
         {
             int built = 0;
-            _roadParentObject = new GameObject("Roads");
+            
             foreach (MapElement mapElement in WorldObjectData.Values)
             {
                 if (!mapElement.Data.ContainsKey(MapNodeKey.KeyType.Highway))
@@ -255,7 +253,7 @@ namespace Managers
                         ? "Road"
                         : mapElement.GetRoadName();
                     Road roadScript = roadObject.GetComponent<Road>();
-                    roadScript.Build(_terrainHeightService, mapElement, leftVerticePositions, rightVerticePositions);
+                    //roadScript.Build(_terrainHeightService, mapElement, leftVerticePositions, rightVerticePositions);
                     built++;
                 }
 

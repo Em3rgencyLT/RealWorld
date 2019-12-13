@@ -19,12 +19,12 @@ namespace Services
         /**
          * Heightmaps are expected to be a 2D array of values from 0 to 1.
          */
-        public float[,] GetHeightmapMatrix(AreaBounds<Coordinates> areaBounds)
+        public float[,] GetHeightmapMatrix(Bounds<Coordinates> bounds)
         {   
             var heightmap = new float[_heightmapResolution, _heightmapResolution];
             
-            var bottomCoordinates = areaBounds.BottomPoint;
-            var topCoordinates = areaBounds.TopPoint;
+            var bottomCoordinates = bounds.MinPoint;
+            var topCoordinates = bounds.MaxPoint;
             double stepLat = (topCoordinates.Latitude - bottomCoordinates.Latitude) / _heightmapResolution;
             double stepLong = (topCoordinates.Longitude - bottomCoordinates.Longitude) / _heightmapResolution;         
 
