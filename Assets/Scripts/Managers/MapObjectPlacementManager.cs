@@ -19,16 +19,12 @@ namespace Managers
 
         [SerializeField] private double locationLatitude = 54.899737;
         [SerializeField] private double locationLongitude = 23.900396;
-        [SerializeField] [Range(2,5)] private int worldSize = 1;
         [SerializeField] private Material terrainMaterial;
 
-        private Bounds<Coordinates> _mapDataBounds;
-        private Bounds<Coordinates> _terrainBounds;
         [SerializeField] private GameObject structurePrefab;
         [SerializeField] private GameObject roadPrefab;
         [SerializeField] private PlayerSpawner _playerSpawner;
-        private GameObject _structureParentObject;
-        private GameObject _roadParentObject;
+        private GameObject _mapDataParentObject;
         private GameObject _terrainParentObject;
         private GameObject _playerObject;
 
@@ -40,11 +36,7 @@ namespace Managers
         private PlayerChunkService _playerChunkService;
 
         private List<Chunk<Terrain>> _terrainChunks = new List<Chunk<Terrain>>();
-        private List<Chunk<List<MapObject>>> _mapObjectChunks = new List<Chunk<List<MapObject>>>();
-
-        public Coordinates MapObjectOrigin { get; private set; }
-
-        public Dictionary<MapElement.ID, MapElement> WorldObjectData { get; private set; }
+        private List<Chunk<WorldObjects>> _mapObjectChunks = new List<Chunk<WorldObjects>>();
 
         private void Awake()
         {
@@ -58,8 +50,6 @@ namespace Managers
             _osmDataService = new OSMDataService();
             _heightmapService = new HeightmapService(_srtmDataService);
             _osmParserService = new OSMParserService(_srtmDataService, _coordinatePositionService);
-        
-            SetupAreas();
 
             //get rid of the private field not set warnings and throw proper errors if they actually aren't set
             if (structurePrefab == null)
@@ -79,54 +69,38 @@ namespace Managers
 
         void Start()
         {
-            //BuildWorld();
             var centerCoordinates = Coordinates.of(locationLatitude, locationLongitude);
             var playerPosition = _coordinatePositionService.GetCoordinatesWithPosition(centerCoordinates, 300).Position;
             _playerObject = _playerSpawner.SpawnPlayer(playerPosition);
             _playerChunkService = new PlayerChunkService(_playerObject);
             _terrainParentObject = new GameObject("Terrain");
-            _structureParentObject = new GameObject("Structures");
-            _roadParentObject = new GameObject("Roads");
+            _mapDataParentObject = new GameObject("Map Data");
         }
 
         private void Update()
         {
             Vector2 playerChunkPosition = _playerChunkService.GetPlayerChunkCoordinates();
 
+            //TODO: The code for these should be in their own service(s)
             UpdateTerrainChunks((int) playerChunkPosition.x, (int) playerChunkPosition.y);
             UpdateMapObjectChunks((int) playerChunkPosition.x, (int) playerChunkPosition.y);
-        }
-
-        private void SetupAreas()
-        {
-            var offset = worldSize * Parameters.WORLD_SIZE_MULTIPLIER;
-            MapObjectOrigin = Coordinates.of(locationLatitude - offset / 2, locationLongitude - offset / 2);
-
-            Coordinates mapDataBottomCoordinates = MapObjectOrigin;
-            Coordinates mapDataTopCoordinates =
-                Coordinates.of(MapObjectOrigin.Latitude + offset, MapObjectOrigin.Longitude + offset);
-            _mapDataBounds = Bounds<Coordinates>.of(mapDataBottomCoordinates, mapDataTopCoordinates);
-
-            Coordinates terrainBottomCoordinates = _coordinatePositionService.WorldCenter;
-            Coordinates terrainTopCoordinates =
-                Coordinates.of(terrainBottomCoordinates.Latitude + offset * 2, terrainBottomCoordinates.Longitude + offset * 2);
-            _terrainBounds = Bounds<Coordinates>.of(terrainBottomCoordinates, terrainTopCoordinates);
         }
 
         private void UpdateTerrainChunks(int playerChunkX, int playerChunkY)
         {
             for (int i = playerChunkX - Parameters.TERRAIN_CHUNK_UNIT_RADIUS;
-                i < playerChunkX + Parameters.TERRAIN_CHUNK_UNIT_RADIUS;
+                i < playerChunkX + Parameters.TERRAIN_CHUNK_UNIT_RADIUS + 1;
                 i++)
             {
                 for (int j = playerChunkY - Parameters.TERRAIN_CHUNK_UNIT_RADIUS;
-                    j < playerChunkY + Parameters.TERRAIN_CHUNK_UNIT_RADIUS;
+                    j < playerChunkY + Parameters.TERRAIN_CHUNK_UNIT_RADIUS + 1;
                     j++)
                 {
                     if (_terrainChunks.Any(chunk => chunk.X == i && chunk.Y == j))
                     {
                         continue;
                     }
+                    //FIXME: terrain chunk edges almost always have gaps betwen them
 
                     Bounds<Vector3> chunkBounds = ChunkHelper.GetChunkBounds(i, j);
                     Coordinates minCoordinates = _coordinatePositionService.CoordinatesFromPosition(chunkBounds.MinPoint);
@@ -146,11 +120,11 @@ namespace Managers
         private void UpdateMapObjectChunks(int playerChunkX, int playerChunkY)
         {
             for (int i = playerChunkX - Parameters.MAP_CHUNK_UNIT_RADIUS;
-                i < playerChunkX + Parameters.MAP_CHUNK_UNIT_RADIUS;
+                i < playerChunkX + Parameters.MAP_CHUNK_UNIT_RADIUS + 1;
                 i++)
             {
                 for (int j = playerChunkY - Parameters.MAP_CHUNK_UNIT_RADIUS;
-                    j < playerChunkY + Parameters.MAP_CHUNK_UNIT_RADIUS;
+                    j < playerChunkY + Parameters.MAP_CHUNK_UNIT_RADIUS + 1;
                     j++)
                 {
                     if (_mapObjectChunks.Any(chunk => chunk.X == i && chunk.Y == j))
@@ -173,97 +147,48 @@ namespace Managers
 
                     var osmData = _osmDataService.GetDataForArea(mapDataBounds);
                     var parsedData = _osmParserService.Parse(osmData);
-                    var vertexData = StructureVertexHelper.GetStructuresWithVertices(parsedData);
-                    var structures = new List<MapObject>();
-                    foreach (StructureWithVertices structureWithVertices in vertexData)
+                    var structureVertexData = StructureVertexHelper.GetStructuresWithVertices(parsedData);
+                    var wayVertexData = WayVertexHelper.GetWaysWithVertices(parsedData, chunkBounds);
+                    var mapObjects = new List<MapObject>();
+                    var chunkParent = new GameObject($"WorldObjects X:{i} Y:{j}");
+                    chunkParent.transform.parent = _mapDataParentObject.transform;
+                    
+                    //TODO: maybe generalize and combine structureVertexData and wayVertexData? The XML they read from is the same, and these foreach loops look awfully similar.
+                    foreach (StructureWithVertices structureWithVertices in structureVertexData)
                     {
                         MapElement mapElement = structureWithVertices.MapElement;
-                        GameObject structureObject = Instantiate(structurePrefab, _structureParentObject.transform);
+                        GameObject structureObject = Instantiate(structurePrefab, chunkParent.transform);
                         structureObject.name = string.IsNullOrWhiteSpace(mapElement.GetAddress())
                             ? "Building"
                             : mapElement.GetAddress();
                         Structure structureScript = structureObject.GetComponent<Structure>();
                         structureScript.Build(heightService, mapElement, structureWithVertices.Vertices);
-                        structures.Add(structureScript);
+                        mapObjects.Add(structureScript);
+                    }
+                    foreach (WayWithVertices wayWithVertices in wayVertexData)
+                    {
+                        if (wayWithVertices.LeftVertices.Count <= 1 || wayWithVertices.RightVertices.Count <= 1 ||
+                            wayWithVertices.LeftVertices.Count != wayWithVertices.RightVertices.Count)
+                        {
+                            continue;
+                        }
+
+                        //TODO: ways can also be rivers and fuck knows what else. Need support for all of that too.
+                        GameObject wayObject = Instantiate(roadPrefab, chunkParent.transform);
+                        MapElement mapElement = wayWithVertices.MapElement;
+                        wayObject.name = string.IsNullOrWhiteSpace(mapElement.GetRoadName())
+                                ? "Road"
+                                : mapElement.GetRoadName();
+                        Road roadScript = wayObject.GetComponent<Road>();
+                        roadScript.Build(heightService, mapElement, wayWithVertices.LeftVertices, wayWithVertices.RightVertices);
+                        mapObjects.Add(roadScript);
                     }
                     
-                    var mapObjectChunk = new Chunk<List<MapObject>>(i, j, structures);
+                    var worldObjects = new WorldObjects(mapObjects);
+                    var mapObjectChunk = new Chunk<WorldObjects>(i, j, worldObjects);
                     _mapObjectChunks.Add(mapObjectChunk);
                 }
             }
-        }
-
-        private IEnumerator PlaceRoads()
-        {
-            int built = 0;
-            
-            foreach (MapElement mapElement in WorldObjectData.Values)
-            {
-                if (!mapElement.Data.ContainsKey(MapNodeKey.KeyType.Highway))
-                {
-                    continue;
-                }
-
-                List<CoordinatesWithPosition> waypoints = new List<CoordinatesWithPosition>();
-                mapElement.References
-                    .ForEach(reference => { waypoints.Add(WorldObjectData[reference].CoordinatesWithPosition); });
-
-                List<Vector3> leftVerticePositions = new List<Vector3>();
-                List<Vector3> rightVerticePositions = new List<Vector3>();
-                float width = Road.GuessRoadWidth(mapElement.Data[MapNodeKey.KeyType.Highway]);
-
-                //TODO: pad waypoint list to have a points at set intervals
-                waypoints
-                    .ForEach(waypoint =>
-                    {
-                        int index = waypoints.IndexOf(waypoint);
-                        Vector3 forward = Vector3.zero;
-
-                        if (index < waypoints.Count - 1)
-                        {
-                            forward += waypoints[index + 1].Position - waypoint.Position;
-                        }
-
-                        if (index > 0)
-                        {
-                            forward += waypoint.Position - waypoints[index - 1].Position;
-                        }
-
-                        forward.Normalize();
-                        Vector3 position = waypoint.Position;
-                        if (index == 0)
-                        {
-                            position -= forward * width / 10;
-                        }
-
-                        if (index == waypoints.Count - 1)
-                        {
-                            position += forward * width / 10;
-                        }
-
-                        Vector3 left = new Vector3(-forward.z, 0f, forward.x);
-                        leftVerticePositions.Add(position + left * width);
-                        rightVerticePositions.Add(position - left * width);
-                    });
-
-                if (leftVerticePositions.Count > 1 && rightVerticePositions.Count > 1 && leftVerticePositions.Count == rightVerticePositions.Count)
-                {
-                    GameObject roadObject = Instantiate(roadPrefab, _roadParentObject.transform);
-                    roadObject.name = string.IsNullOrWhiteSpace(mapElement.GetRoadName())
-                        ? "Road"
-                        : mapElement.GetRoadName();
-                    Road roadScript = roadObject.GetComponent<Road>();
-                    //roadScript.Build(_terrainHeightService, mapElement, leftVerticePositions, rightVerticePositions);
-                    built++;
-                }
-
-                if (built % 250 == 0)
-                {
-                    yield return null;
-                }
-            }
-
-            yield return null;
         }
     }
 }
