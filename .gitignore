@@ -4,10 +4,10 @@
 [Bb]uild/
 [Bb]uilds/
 Assets/AssetStoreTools*
-Assets/SRTMData/*.zip
-Assets/SRTMData/*.meta
-Assets/OSMData/*.osm
-Assets/OSMData/*.meta
+Assets/SRTMCache/*.zip
+Assets/SRTMCache/*.meta
+Assets/OSMCache/*.osm
+Assets/OSMCache/*.meta
 
 #Intellij cache
 .idea/

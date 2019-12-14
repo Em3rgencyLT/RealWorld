@@ -12,7 +12,8 @@ namespace Services
 
         public HeightmapService(SRTMDataService srtmDataService)
         {
-            _heightmapResolution = 129;
+            //FIXME: should be dynamic based on chunk size. Small chunks with large resolution make it look voxel-y
+            _heightmapResolution = 65;
             _srtmDataService = srtmDataService;
         }
 

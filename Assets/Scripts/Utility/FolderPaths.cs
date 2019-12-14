@@ -4,8 +4,8 @@ namespace Utility
 {
     public static class FolderPaths
     {
-        public static string SRTMData => Application.dataPath + PickSlashDirection() + "SRTMData";
-        public static string OSMData => Application.dataPath + PickSlashDirection() + "OSMData";
+        public static string SRTMData => Application.dataPath + PickSlashDirection() + "SRTMCache";
+        public static string OSMData => Application.dataPath + PickSlashDirection() + "OSMCache";
         
         private static string PickSlashDirection()
         {
