@@ -2,6 +2,7 @@ using System;
 using Domain;
 using Domain.Tuples;
 using UnityEngine;
+using Utility;
 
 namespace Services
 {
@@ -13,9 +14,12 @@ namespace Services
         private int _detailResolution = 1024;
         private int _resolutionPerPatch = 32;
 
+        private ConfigurationService _config;
+
         public TerrainBuilder(Material material)
         {
             _material = material;
+            _config = new ConfigurationService(FolderPaths.ConfigFile);
         }
 
         public TerrainBuilder BaseMapResolution(int baseMapResolution)
@@ -40,14 +44,14 @@ namespace Services
         {
             var terrainObject = new GameObject(name);
             terrainObject.transform.position = position;
-            terrainObject.layer = Parameters.TERRAIN_LAYER;
+            terrainObject.layer = _config.GetInt(ConfigurationKeyInt.TERRAIN_LAYER);
 
             TerrainData terrainData = new TerrainData();
             terrainData.heightmapResolution = heightmap.GetLength(0);
             terrainData.baseMapResolution = _baseMapResolution;
             terrainData.SetDetailResolution(_detailResolution, _resolutionPerPatch);
             terrainData.size =
-                new Vector3(Parameters.CHUNK_SIZE_METERS, 8848f, Parameters.CHUNK_SIZE_METERS);
+                new Vector3(_config.GetInt(ConfigurationKeyInt.CHUNK_SIZE_METERS), 8848f, _config.GetInt(ConfigurationKeyInt.CHUNK_SIZE_METERS));
             terrainData.SetHeights(0, 0, heightmap);
 
             TerrainCollider terrainCollider = terrainObject.AddComponent<TerrainCollider>();

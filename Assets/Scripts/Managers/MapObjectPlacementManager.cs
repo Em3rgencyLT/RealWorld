@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -28,6 +27,7 @@ namespace Managers
         private GameObject _terrainParentObject;
         private GameObject _playerObject;
 
+        private ConfigurationService _configurationService;
         private CoordinatePositionService _coordinatePositionService;
         private SRTMDataService _srtmDataService;
         private OSMDataService _osmDataService;
@@ -45,6 +45,7 @@ namespace Managers
             
             var worldCenter = Coordinates.of(locationLatitude, locationLongitude);
         
+            _configurationService = new ConfigurationService(FolderPaths.ConfigFile);
             _coordinatePositionService = new CoordinatePositionService(worldCenter);
             _srtmDataService = new SRTMDataService();
             _osmDataService = new OSMDataService();
@@ -88,12 +89,12 @@ namespace Managers
 
         private void UpdateTerrainChunks(int playerChunkX, int playerChunkY)
         {
-            for (int i = playerChunkX - Parameters.TERRAIN_CHUNK_UNIT_RADIUS;
-                i < playerChunkX + Parameters.TERRAIN_CHUNK_UNIT_RADIUS + 1;
+            for (int i = playerChunkX - _configurationService.GetInt(ConfigurationKeyInt.TERRAIN_CHUNK_UNIT_RADIUS);
+                i < playerChunkX + _configurationService.GetInt(ConfigurationKeyInt.TERRAIN_CHUNK_UNIT_RADIUS) + 1;
                 i++)
             {
-                for (int j = playerChunkY - Parameters.TERRAIN_CHUNK_UNIT_RADIUS;
-                    j < playerChunkY + Parameters.TERRAIN_CHUNK_UNIT_RADIUS + 1;
+                for (int j = playerChunkY - _configurationService.GetInt(ConfigurationKeyInt.TERRAIN_CHUNK_UNIT_RADIUS);
+                    j < playerChunkY + _configurationService.GetInt(ConfigurationKeyInt.TERRAIN_CHUNK_UNIT_RADIUS) + 1;
                     j++)
                 {
                     if (_terrainChunks.Any(chunk => chunk.X == i && chunk.Y == j))
@@ -102,7 +103,7 @@ namespace Managers
                     }
                     //FIXME: terrain chunk edges almost always have gaps betwen them
 
-                    Bounds<Vector3> chunkBounds = ChunkHelper.GetChunkBounds(i, j);
+                    Bounds<Vector3> chunkBounds = ChunkHelper.GetChunkBounds(i, j, _configurationService.GetInt(ConfigurationKeyInt.CHUNK_SIZE_METERS));
                     Coordinates minCoordinates = _coordinatePositionService.CoordinatesFromPosition(chunkBounds.MinPoint);
                     Coordinates maxCoordinates = _coordinatePositionService.CoordinatesFromPosition(chunkBounds.MaxPoint);
                     Bounds<Coordinates> terrainBounds = Bounds<Coordinates>.of(minCoordinates, maxCoordinates);
@@ -119,12 +120,12 @@ namespace Managers
 
         private void UpdateMapObjectChunks(int playerChunkX, int playerChunkY)
         {
-            for (int i = playerChunkX - Parameters.MAP_CHUNK_UNIT_RADIUS;
-                i < playerChunkX + Parameters.MAP_CHUNK_UNIT_RADIUS + 1;
+            for (int i = playerChunkX - _configurationService.GetInt(ConfigurationKeyInt.MAP_CHUNK_UNIT_RADIUS);
+                i < playerChunkX + _configurationService.GetInt(ConfigurationKeyInt.MAP_CHUNK_UNIT_RADIUS) + 1;
                 i++)
             {
-                for (int j = playerChunkY - Parameters.MAP_CHUNK_UNIT_RADIUS;
-                    j < playerChunkY + Parameters.MAP_CHUNK_UNIT_RADIUS + 1;
+                for (int j = playerChunkY - _configurationService.GetInt(ConfigurationKeyInt.MAP_CHUNK_UNIT_RADIUS);
+                    j < playerChunkY + _configurationService.GetInt(ConfigurationKeyInt.MAP_CHUNK_UNIT_RADIUS) + 1;
                     j++)
                 {
                     if (_mapObjectChunks.Any(chunk => chunk.X == i && chunk.Y == j))
@@ -140,7 +141,7 @@ namespace Managers
                     
                     var heightService = new TerrainHeightService(terrain);
                     
-                    Bounds<Vector3> chunkBounds = ChunkHelper.GetChunkBounds(i, j);
+                    Bounds<Vector3> chunkBounds = ChunkHelper.GetChunkBounds(i, j, _configurationService.GetInt(ConfigurationKeyInt.CHUNK_SIZE_METERS));
                     Coordinates minCoordinates = _coordinatePositionService.CoordinatesFromPosition(chunkBounds.MinPoint);
                     Coordinates maxCoordinates = _coordinatePositionService.CoordinatesFromPosition(chunkBounds.MaxPoint);
                     Bounds<Coordinates> mapDataBounds = Bounds<Coordinates>.of(minCoordinates, maxCoordinates);

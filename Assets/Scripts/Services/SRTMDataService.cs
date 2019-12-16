@@ -10,17 +10,22 @@ namespace Services
     public class SRTMDataService
     {
         private SRTMData _srtmData;
+        private ConfigurationService _config;
         
         public SRTMDataService()
         {
-            if (string.IsNullOrEmpty(Parameters.NASA_SRTM_USERNAME) ||
-                string.IsNullOrEmpty(Parameters.NASA_SRTM_PASSWORD))
+            _config = new ConfigurationService(FolderPaths.ConfigFile);
+            string username = _config.GetString(ConfigurationKeyString.NASA_SRTM_USERNAME);
+            string password = _config.GetString(ConfigurationKeyString.NASA_SRTM_PASSWORD);
+            
+            if (string.IsNullOrEmpty(username) ||
+                string.IsNullOrEmpty(password))
             {
                 _srtmData = new SRTMData(FolderPaths.SRTMData, new USGSSource());
             }
             else
             {
-                var credentials = new NetworkCredential(Parameters.NASA_SRTM_USERNAME, Parameters.NASA_SRTM_PASSWORD);
+                var credentials = new NetworkCredential(username, password);
                 _srtmData = new SRTMData(FolderPaths.SRTMData, new NASASource(credentials));
             }
         }

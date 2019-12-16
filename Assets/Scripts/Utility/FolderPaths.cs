@@ -4,10 +4,12 @@ namespace Utility
 {
     public static class FolderPaths
     {
-        public static string SRTMData => Application.dataPath + PickSlashDirection() + "SRTMCache";
-        public static string OSMData => Application.dataPath + PickSlashDirection() + "OSMCache";
+        public static string SRTMData => Application.streamingAssetsPath + Slash() + "SRTMCache";
+        public static string OSMData => Application.streamingAssetsPath + Slash() + "OSMCache";
+        public static string ConfigDir => Application.persistentDataPath + Slash() + "Config";
+        public static string ConfigFile => ConfigDir + Slash() + "config.cfg";
         
-        private static string PickSlashDirection()
+        public static string Slash()
         {
             switch (Application.platform)
             {

@@ -11,8 +11,12 @@ namespace Services
     public class OSMDataService
     {
         private static readonly string FILE_EXTENSION = ".osm";
-        
-        public OSMDataService() {}
+        private ConfigurationService _config;
+
+        public OSMDataService()
+        {
+            _config = new ConfigurationService(FolderPaths.ConfigFile);
+        }
         
         public XElement GetDataForArea(Bounds<Coordinates> bounds)
         {
@@ -37,7 +41,7 @@ namespace Services
 
             try
             {
-                string url = Parameters.OSM_DATA_API_URL + commaSeparatedBounds;
+                string url = _config.GetString(ConfigurationKeyString.OSM_DATA_API_URL) + commaSeparatedBounds;
                 string rawXml = HttpRequest.Get(url);
                 File.WriteAllText(filename, rawXml);
             }

@@ -6,12 +6,12 @@ namespace Utility
 {
     public class ChunkHelper
     {
-        public static Bounds<Vector3> GetChunkBounds(int x, int y)
+        public static Bounds<Vector3> GetChunkBounds(int x, int y, int chunkSize)
         {
-            int chunkXmin = x * Parameters.CHUNK_SIZE_METERS - Parameters.CHUNK_SIZE_METERS / 2;
-            int chunkYmin = y * Parameters.CHUNK_SIZE_METERS - Parameters.CHUNK_SIZE_METERS / 2;
-            int chunkXmax = x * Parameters.CHUNK_SIZE_METERS + Parameters.CHUNK_SIZE_METERS / 2;
-            int chunkYmax = y * Parameters.CHUNK_SIZE_METERS + Parameters.CHUNK_SIZE_METERS / 2;
+            int chunkXmin = x * chunkSize - chunkSize / 2;
+            int chunkYmin = y * chunkSize - chunkSize / 2;
+            int chunkXmax = x * chunkSize + chunkSize / 2;
+            int chunkYmax = y * chunkSize + chunkSize / 2;
                     
             Vector3 minPoint = new Vector3(chunkXmin, 0f, chunkYmin);
             Vector3 maxPoint = new Vector3(chunkXmax, 0f, chunkYmax);
