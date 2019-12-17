@@ -101,7 +101,6 @@ namespace Managers
                     {
                         continue;
                     }
-                    //FIXME: terrain chunk edges almost always have gaps betwen them
 
                     Bounds<Vector3> chunkBounds = ChunkHelper.GetChunkBounds(i, j, _configurationService.GetInt(ConfigurationKeyInt.CHUNK_SIZE_METERS));
                     Coordinates minCoordinates = _coordinatePositionService.CoordinatesFromPosition(chunkBounds.MinPoint);
@@ -110,8 +109,33 @@ namespace Managers
 
                     var heightmap = _heightmapService.GetHeightmapMatrix(terrainBounds);
                     var terrain = new TerrainBuilder(terrainMaterial).Build($"Terrain X:{i} Y:{j}" ,heightmap, chunkBounds.MinPoint);
-
                     terrain.transform.parent = _terrainParentObject.transform;
+
+                    //TODO: maybe move this into the Chunk class on creation?
+                    var northNeighbour = _terrainChunks.Find(chunk => chunk.X == i && chunk.Y == j + 1);
+                    var eastNeighbour = _terrainChunks.Find(chunk => chunk.X == i + 1 && chunk.Y == j);
+                    var southNeighbour = _terrainChunks.Find(chunk => chunk.X == i && chunk.Y == j - 1);
+                    var westNeighbour = _terrainChunks.Find(chunk => chunk.X == i - 1 && chunk.Y == j);
+                    if (northNeighbour != null)
+                    {
+                        terrain = TerrainWeldingHelper.Weld(terrain,northNeighbour.Data, TerrainWeldingHelper.Direction.NORTH);
+                    }
+
+                    if (eastNeighbour != null)
+                    {
+                        terrain = TerrainWeldingHelper.Weld(terrain,eastNeighbour.Data, TerrainWeldingHelper.Direction.EAST);
+                    }
+                    
+                    if (southNeighbour != null)
+                    {
+                        terrain = TerrainWeldingHelper.Weld(terrain,southNeighbour.Data, TerrainWeldingHelper.Direction.SOUTH);
+                    }
+                    
+                    if (westNeighbour != null)
+                    {
+                        terrain = TerrainWeldingHelper.Weld(terrain,westNeighbour.Data, TerrainWeldingHelper.Direction.WEST);
+                    }
+                    
                     var terrainChunk = new Chunk<Terrain>(i, j, terrain);
                     _terrainChunks.Add(terrainChunk);
                 }

@@ -2,14 +2,12 @@ using System;
 using System.IO;
 using Domain;
 using SharpConfig;
-using UnityEngine;
-using Utility;
 
 namespace Services
 {
     public class ConfigurationService
     {
-        private static readonly double CURRENT_VERSION = 0.01;
+        private static readonly double CURRENT_VERSION = 0.02;
         private string _filepath;
         private Configuration _configuration;
 
@@ -78,9 +76,10 @@ namespace Services
             configuration["Data Sources"][ConfigurationKeyString.NASA_SRTM_USERNAME.ToString()].PreComment = "https://urs.earthdata.nasa.gov/users/new/";
             configuration["Data Sources"][ConfigurationKeyString.NASA_SRTM_USERNAME.ToString()].StringValue = "";
             configuration["Data Sources"][ConfigurationKeyString.NASA_SRTM_PASSWORD.ToString()].StringValue = "";
-            configuration["LoadDistance"][ConfigurationKeyInt.CHUNK_SIZE_METERS.ToString()].IntValue = 256;
-            configuration["LoadDistance"][ConfigurationKeyInt.TERRAIN_CHUNK_UNIT_RADIUS.ToString()].IntValue = 6;
-            configuration["LoadDistance"][ConfigurationKeyInt.MAP_CHUNK_UNIT_RADIUS.ToString()].IntValue = 3;
+            configuration["Measurements"][ConfigurationKeyInt.CHUNK_SIZE_METERS.ToString()].IntValue = 256;
+            configuration["Measurements"][ConfigurationKeyInt.TERRAIN_CHUNK_UNIT_RADIUS.ToString()].IntValue = 6;
+            configuration["Measurements"][ConfigurationKeyInt.MAP_CHUNK_UNIT_RADIUS.ToString()].IntValue = 3;
+            configuration["Measurements"][ConfigurationKeyInt.HIGHEST_ELEVATION_ON_EARTH.ToString()].IntValue = 8848;
             configuration["Internal"]["CONFIGURATION_VERSION"].DoubleValue = CURRENT_VERSION;
             configuration["Internal"][ConfigurationKeyInt.TERRAIN_LAYER.ToString()].IntValue = 15;
             return configuration;
