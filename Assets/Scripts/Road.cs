@@ -13,10 +13,6 @@ public class Road : MapObject
         mapId = mapElement.Id;
         _leftVerticePositions = leftVerticePositions;
         _rightVerticePositions = rightVerticePositions;
-        //baseVerticePositions = new List<Vector3>();
-        //baseVerticePositions.AddRange(leftVerticePositions);
-        //rightVerticePositions.Reverse();
-        //baseVerticePositions.AddRange(rightVerticePositions);
 
         GameObject meshParent = new GameObject("Mesh");
         meshParent.transform.parent = transform;
