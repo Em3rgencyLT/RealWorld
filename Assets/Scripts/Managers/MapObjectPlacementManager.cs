@@ -18,11 +18,11 @@ namespace Managers
 
         [SerializeField] private double locationLatitude = 54.899737;
         [SerializeField] private double locationLongitude = 23.900396;
-        [SerializeField] private Material terrainMaterial;
+        [SerializeField] private Material terrainMaterial = null;
 
-        [SerializeField] private GameObject structurePrefab;
-        [SerializeField] private GameObject roadPrefab;
-        [SerializeField] private PlayerSpawner _playerSpawner;
+        [SerializeField] private GameObject structurePrefab = null;
+        [SerializeField] private GameObject roadPrefab = null;
+        [SerializeField] private PlayerSpawner _playerSpawner = null;
         private GameObject _mapDataParentObject;
         private GameObject _terrainParentObject;
         private GameObject _playerObject;
@@ -48,23 +48,26 @@ namespace Managers
             _configurationService = new ConfigurationService(FolderPaths.ConfigFile);
             _coordinatePositionService = new CoordinatePositionService(worldCenter);
             _srtmDataService = new SRTMDataService();
-            _osmDataService = new OSMDataService();
+            _osmDataService = new OSMDataService(_configurationService.GetString(ConfigurationKeyString.OSM_DATA_API_URL));
             _heightmapService = new HeightmapService(_srtmDataService);
             _osmParserService = new OSMParserService(_srtmDataService, _coordinatePositionService);
 
-            //get rid of the private field not set warnings and throw proper errors if they actually aren't set
             if (structurePrefab == null)
             {
-                structurePrefab = null;
                 throw new ArgumentException(
-                    "Structure Prefab cannot be null! Please set in inspector of MapObjectPlacementManager!");
+                    $"Structure Prefab cannot be null! Please set in inspector of {name}!");
             }
 
             if (roadPrefab == null)
             {
-                roadPrefab = null;
                 throw new ArgumentException(
-                    "Road Prefab cannot be null! Please set in inspector of MapObjectPlacementManager!");
+                    $"Road Prefab cannot be null! Please set in inspector of {name}!");
+            }
+            
+            if (_playerSpawner == null)
+            {
+                throw new ArgumentException(
+                    $"Player Spawner cannot be null! Please set in inspector of {name}!");
             }
         }
 
@@ -73,7 +76,7 @@ namespace Managers
             var centerCoordinates = Coordinates.of(locationLatitude, locationLongitude);
             var playerPosition = _coordinatePositionService.GetCoordinatesWithPosition(centerCoordinates, 300).Position;
             _playerObject = _playerSpawner.SpawnPlayer(playerPosition);
-            _playerChunkService = new PlayerChunkService(_playerObject);
+            _playerChunkService = new PlayerChunkService(_playerObject, _configurationService.GetInt(ConfigurationKeyInt.CHUNK_SIZE_METERS));
             _terrainParentObject = new GameObject("Terrain");
             _mapDataParentObject = new GameObject("Map Data");
         }

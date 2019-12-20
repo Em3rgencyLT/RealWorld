@@ -26,7 +26,7 @@ namespace Utility
                 case Direction.SOUTH:
                     return WeldEdge(main, other, start, start, start, end, end, start);
                 case Direction.EAST:
-                    return WeldEdge(main, other, start, end, end, end, start, start);
+                    return WeldEdge(main, other, end, start, start, start, start, start);
                 case Direction.WEST:
                     return WeldEdge(main, other, start, end, start, start, start, end);
                 default:

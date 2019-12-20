@@ -3,7 +3,7 @@
 [CreateAssetMenu(menuName = "Spawners / Player Spawner")]
 public class PlayerSpawner : ScriptableObject
 {
-    [SerializeField] private GameObject _playerPrefab;
+    [SerializeField] private GameObject _playerPrefab = null;
 
     public GameObject SpawnPlayer(Vector3 position)
     {

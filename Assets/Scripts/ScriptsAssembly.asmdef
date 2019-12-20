@@ -1,0 +1,15 @@
+{
+    "name": "ScriptsAssembly",
+    "references": [
+        "GUID:544eed6967ed40a48bbfdcf8b6cbaa90"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
