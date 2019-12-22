@@ -39,6 +39,7 @@ namespace Services
                 return true;
             }
 
+            Debug.Log($"Downloading {filename}");
             try
             {
                 string url = _APIUrl + commaSeparatedBounds;

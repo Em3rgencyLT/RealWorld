@@ -48,8 +48,8 @@ namespace Services
             terrainData.heightmapResolution = heightmap.GetLength(0);
             terrainData.baseMapResolution = _baseMapResolution;
             terrainData.SetDetailResolution(_detailResolution, _resolutionPerPatch);
-            terrainData.size =
-                new Vector3(_config.GetInt(ConfigurationKeyInt.CHUNK_SIZE_METERS), 8848f, _config.GetInt(ConfigurationKeyInt.CHUNK_SIZE_METERS));
+            int chunkSizeMeters = _config.GetInt(ConfigurationKeyInt.CHUNK_SIZE_METERS);
+            terrainData.size = new Vector3(chunkSizeMeters, 8848f, chunkSizeMeters);
             terrainData.SetHeights(0, 0, heightmap);
 
             TerrainCollider terrainCollider = terrainObject.AddComponent<TerrainCollider>();

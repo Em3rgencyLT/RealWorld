@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using Domain;
 using Domain.Tuples;
 using Services;
@@ -36,8 +37,9 @@ namespace Managers
         private PlayerChunkService _playerChunkService;
         private ChunkUpdateBufferService _chunkUpdateBufferService;
 
+        private List<PreparedChunk> _preparedChunks = new List<PreparedChunk>();
         private List<Chunk> _chunks = new List<Chunk>();
-
+        
         private void Awake()
         {
             //Make sure doubles accept . for decimal instead of ,
@@ -47,10 +49,13 @@ namespace Managers
 
             _configurationService = new ConfigurationService(FolderPaths.ConfigFile);
             _coordinatePositionService = new CoordinatePositionService(worldCenter);
-            _srtmDataService = new SRTMDataService();
-            _osmDataService =
-                new OSMDataService(_configurationService.GetString(ConfigurationKeyString.OSM_DATA_API_URL));
-            _heightmapService = new HeightmapService(_srtmDataService);
+            string username = _configurationService.GetString(ConfigurationKeyString.NASA_SRTM_USERNAME);
+            string password = _configurationService.GetString(ConfigurationKeyString.NASA_SRTM_PASSWORD);
+            _srtmDataService = new SRTMDataService(username, password);
+            string osmAPI = _configurationService.GetString(ConfigurationKeyString.OSM_DATA_API_URL);
+            _osmDataService = new OSMDataService(osmAPI);
+            int highestElevation = _configurationService.GetInt(ConfigurationKeyInt.HIGHEST_ELEVATION_ON_EARTH);
+            _heightmapService = new HeightmapService(_srtmDataService, highestElevation);
             _osmParserService = new OSMParserService(_srtmDataService, _coordinatePositionService);
             _chunkUpdateBufferService = new ChunkUpdateBufferService();
 
@@ -100,7 +105,7 @@ namespace Managers
                 switch (chunk.EventType)
                 {
                     case ChunkUpdate.Type.CREATE:
-                        CreateChunk(chunk.Location);
+                        PrepareChunk(chunk.Location);
                         break;
                     case ChunkUpdate.Type.DELETE:
                         DeleteChunk(chunk.Location);
@@ -110,29 +115,49 @@ namespace Managers
                 }
                 chunk = _chunkUpdateBufferService.PopNext();
             }
+
+            if (_preparedChunks.Count > 0)
+            {
+                var preparedChunk = _preparedChunks[0];
+                CreateChunk(preparedChunk);
+                _preparedChunks.Remove(preparedChunk);
+            }
         }
 
-        private void CreateChunk(Int2 location)
+        private void PrepareChunk(Int2 location)
         {
-            Bounds<Vector3> chunkBounds = ChunkHelper.GetChunkBounds(location.X, location.Y,
-                _configurationService.GetInt(ConfigurationKeyInt.CHUNK_SIZE_METERS));
+            int chunkSizeMeters = _configurationService.GetInt(ConfigurationKeyInt.CHUNK_SIZE_METERS);
+            Bounds<Vector3> chunkBounds = ChunkHelper.GetChunkBounds(location.X, location.Y, chunkSizeMeters);
+            AsyncChunkRequest asyncChunkRequest = new AsyncChunkRequest(chunkBounds, location);
+            ThreadPool.QueueUserWorkItem(AsyncCalculateChunkData, asyncChunkRequest);
+        }
+
+        private void AsyncCalculateChunkData(object state)
+        {
+            Bounds<Vector3> chunkBounds = ((AsyncChunkRequest) state).ChunkBounds;
+            Int2 location = ((AsyncChunkRequest) state).Location;
+            
             Coordinates minCoordinates = _coordinatePositionService.CoordinatesFromPosition(chunkBounds.MinPoint);
             Coordinates maxCoordinates = _coordinatePositionService.CoordinatesFromPosition(chunkBounds.MaxPoint);
             Bounds<Coordinates> areaBounds = Bounds<Coordinates>.of(minCoordinates, maxCoordinates);
-
             var heightmap = _heightmapService.GetHeightmapMatrix(areaBounds);
             var osmData = _osmDataService.GetDataForArea(areaBounds);
             var parsedData = _osmParserService.Parse(osmData);
             var structureVertexData = StructureVertexHelper.GetStructuresWithVertices(parsedData);
             var wayVertexData = WayVertexHelper.GetWaysWithVertices(parsedData, chunkBounds);
-            
-            var terrain = TerrainInstantiator.InstantiateTerrain(heightmap, location, chunkBounds,
+
+            var preparedChunk = new PreparedChunk(heightmap, chunkBounds, location, structureVertexData, wayVertexData);
+            _preparedChunks.Add(preparedChunk);
+        }
+
+        private void CreateChunk(PreparedChunk preparedChunk)
+        {
+            var terrain = TerrainInstantiator.InstantiateTerrain(preparedChunk.Heightmap, preparedChunk.Location, preparedChunk.ChunkBounds,
                 terrainMaterial, _terrainParentObject, _chunks);
             var heightService = new TerrainHeightService(terrain);
-            WorldObjects worldObjects = WorldObjectsInstantiator.InstantiateWorldObjects(structureVertexData,
-                wayVertexData, location, structurePrefab, roadPrefab, heightService, _mapDataParentObject);
-
-            var chunk = new Chunk(location, terrain, worldObjects);
+            WorldObjects worldObjects = WorldObjectsInstantiator.InstantiateWorldObjects(preparedChunk.StructureVertexData,
+                preparedChunk.WayVertexData, preparedChunk.Location, structurePrefab, roadPrefab, heightService, _mapDataParentObject);
+            var chunk = new Chunk(preparedChunk.Location, terrain, worldObjects);
             _chunks.Add(chunk);
         }
 

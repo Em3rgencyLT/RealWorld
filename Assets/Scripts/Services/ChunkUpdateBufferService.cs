@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Domain;
+using UnityEngine;
 
 namespace Services
 {
@@ -34,6 +35,7 @@ namespace Services
 
         public ChunkUpdate PopNext()
         {
+            Debug.Log($"Chunk Buffer remaining: {_buffer.Count}");
             if (_buffer.Count == 0)
             {
                 return null;

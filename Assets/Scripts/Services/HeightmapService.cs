@@ -11,13 +11,12 @@ namespace Services
         private SRTMDataService _srtmDataService;
         private int _highestElevation;
 
-        public HeightmapService(SRTMDataService srtmDataService)
+        public HeightmapService(SRTMDataService srtmDataService, int highestElevation)
         {
             //FIXME: should be dynamic based on chunk size. Small chunks with large resolution make it look voxel-y
             _heightmapResolution = 65;
             _srtmDataService = srtmDataService;
-            var _config = new ConfigurationService(FolderPaths.ConfigFile);
-            _highestElevation = _config.GetInt(ConfigurationKeyInt.HIGHEST_ELEVATION_ON_EARTH);
+            _highestElevation = highestElevation;
         }
 
         /**
