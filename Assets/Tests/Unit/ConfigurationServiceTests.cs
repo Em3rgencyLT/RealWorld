@@ -49,8 +49,7 @@ namespace Tests.Unit
         public void DefaultConfigNumbersArePositive()
         {
             Assert.Greater(_service.GetInt(ConfigurationKeyInt.CHUNK_SIZE_METERS), 0);
-            Assert.Greater(_service.GetInt(ConfigurationKeyInt.MAP_CHUNK_UNIT_RADIUS), 0);
-            Assert.Greater(_service.GetInt(ConfigurationKeyInt.TERRAIN_CHUNK_UNIT_RADIUS), 0);
+            Assert.Greater(_service.GetInt(ConfigurationKeyInt.CHUNK_UNIT_RADIUS), 0);
             Assert.Greater(_service.GetInt(ConfigurationKeyInt.HIGHEST_ELEVATION_ON_EARTH), 0);
         }
     }

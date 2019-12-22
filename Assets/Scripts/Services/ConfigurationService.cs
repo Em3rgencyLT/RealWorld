@@ -7,7 +7,7 @@ namespace Services
 {
     public class ConfigurationService
     {
-        private static readonly double CURRENT_VERSION = 0.02;
+        private static readonly double CURRENT_VERSION = 0.03;
         private string _filepath;
         private Configuration _configuration;
 
@@ -66,7 +66,7 @@ namespace Services
 
         private bool IsConfigurationCurrent(Configuration configuration)
         {
-            return Math.Abs(configuration["Internal"]["CONFIGURATION_VERSION"].DoubleValue - CURRENT_VERSION) < 0.01;
+            return Math.Abs(configuration["Internal"]["CONFIGURATION_VERSION"].DoubleValue - CURRENT_VERSION) < 0.001;
         }
         
         private Configuration GenerateDefaultConfig()
@@ -77,8 +77,7 @@ namespace Services
             configuration["Data Sources"][ConfigurationKeyString.NASA_SRTM_USERNAME.ToString()].StringValue = "";
             configuration["Data Sources"][ConfigurationKeyString.NASA_SRTM_PASSWORD.ToString()].StringValue = "";
             configuration["Measurements"][ConfigurationKeyInt.CHUNK_SIZE_METERS.ToString()].IntValue = 256;
-            configuration["Measurements"][ConfigurationKeyInt.TERRAIN_CHUNK_UNIT_RADIUS.ToString()].IntValue = 6;
-            configuration["Measurements"][ConfigurationKeyInt.MAP_CHUNK_UNIT_RADIUS.ToString()].IntValue = 3;
+            configuration["Measurements"][ConfigurationKeyInt.CHUNK_UNIT_RADIUS.ToString()].IntValue = 4;
             configuration["Measurements"][ConfigurationKeyInt.HIGHEST_ELEVATION_ON_EARTH.ToString()].IntValue = 8848;
             configuration["Internal"]["CONFIGURATION_VERSION"].DoubleValue = CURRENT_VERSION;
             configuration["Internal"][ConfigurationKeyInt.TERRAIN_LAYER.ToString()].IntValue = 15;

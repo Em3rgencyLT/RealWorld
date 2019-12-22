@@ -1,22 +1,24 @@
+using UnityEngine;
+
 namespace Domain
 {
-    public class Chunk<T>
+    public class Chunk
     {
-        private int _x;
-        private int _y;
-        private T _data;
+        private Int2 _location;
+        private Terrain _terrain;
+        private WorldObjects _worldObjects;
 
-        public Chunk(int x, int y, T data)
+        public Chunk(Int2 location, Terrain terrain, WorldObjects worldObjects)
         {
-            _x = x;
-            _y = y;
-            _data = data;
+            _location = location;
+            _terrain = terrain;
+            _worldObjects = worldObjects;
         }
 
-        public int X => _x;
+        public Int2 Location => _location;
 
-        public int Y => _y;
+        public Terrain Terrain => _terrain;
 
-        public T Data => _data;
+        public WorldObjects WorldObjects => _worldObjects;
     }
 }
