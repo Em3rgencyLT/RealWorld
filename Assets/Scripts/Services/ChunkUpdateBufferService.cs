@@ -19,7 +19,8 @@ namespace Services
             {
                 bool isDuplicate = _buffer.Any(existing => existing.IsEqualTo(newEvent));
                 bool isOpposite = _buffer.Any(existing => existing.IsOppositeTo(newEvent));
-                if (!isDuplicate && !isOpposite)
+                bool isLoading = _buffer.Any(existing => existing.IsLoading(newEvent));
+                if (!isDuplicate && !isOpposite && !isLoading)
                 {
                     _buffer.Add(newEvent);
                 }
@@ -30,6 +31,16 @@ namespace Services
                     _buffer.Remove(opposite);
                 }
             });
+        }
+
+        public void FinishLoading(Int2 location)
+        {
+            ChunkUpdate chunk = new ChunkUpdate(location, ChunkUpdate.Type.LOADING);
+            ChunkUpdate loadingChunk = _buffer.FirstOrDefault(update => update.IsEqualTo(chunk));
+            if (loadingChunk != null)
+            {
+                _buffer.Remove(loadingChunk);
+            }
         }
 
         public ChunkUpdate PopNext()

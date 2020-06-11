@@ -18,6 +18,7 @@ namespace Domain
         public enum Type
         {
             CREATE,
+            LOADING,
             DELETE
         }
 
@@ -31,6 +32,12 @@ namespace Domain
         {
             return _location.X == other._location.X && _location.Y == other.Location.Y &&
                    _eventType != other._eventType;
+        }
+
+        public bool IsLoading(ChunkUpdate other)
+        {
+            return _location.X == other._location.X && _location.Y == other.Location.Y &&
+                   _eventType == Type.LOADING;
         }
     }
 }

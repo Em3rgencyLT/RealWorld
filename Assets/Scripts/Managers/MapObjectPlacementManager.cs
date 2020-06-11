@@ -37,6 +37,7 @@ namespace Managers
         private ChunkUpdateBufferService _chunkUpdateBufferService;
 
         private List<Chunk> _chunks = new List<Chunk>();
+        private Queue<Action> _asyncResultProcessors = new Queue<Action>();
 
         private void Awake()
         {
@@ -88,52 +89,70 @@ namespace Managers
         private void Update()
         {
             ProcessChunkBuffer();
+            if (_asyncResultProcessors.Count > 0)
+            {
+                _asyncResultProcessors.Dequeue().Invoke();
+            }
         }
 
         private void ProcessChunkBuffer()
         {
             _chunkUpdateBufferService.AddToBuffer(_playerChunkService.GetChunkUpdates(_chunks));
-
             var chunk = _chunkUpdateBufferService.PopNext();
-            while (chunk != null)
+            if (chunk == null) return;
+
+            switch (chunk.EventType)
             {
-                switch (chunk.EventType)
-                {
-                    case ChunkUpdate.Type.CREATE:
-                        CreateChunk(chunk.Location);
-                        break;
-                    case ChunkUpdate.Type.DELETE:
-                        DeleteChunk(chunk.Location);
-                        break;
-                    default:
-                        throw new Exception("Something has gone horribly wrong.");
-                }
-                chunk = _chunkUpdateBufferService.PopNext();
+                case ChunkUpdate.Type.CREATE:
+                    CreateChunk(chunk.Location);
+                    break;
+                case ChunkUpdate.Type.DELETE:
+                    DeleteChunk(chunk.Location);
+                    break;
+                case ChunkUpdate.Type.LOADING:
+                    _chunkUpdateBufferService.AddToBuffer(new List<ChunkUpdate>(){chunk});
+                    break;
+                default:
+                    throw new Exception("Something has gone horribly wrong.");
             }
         }
 
         private void CreateChunk(Int2 location)
         {
-            Bounds<Vector3> chunkBounds = ChunkHelper.GetChunkBounds(location.X, location.Y,
-                _configurationService.GetInt(ConfigurationKeyInt.CHUNK_SIZE_METERS));
-            Coordinates minCoordinates = _coordinatePositionService.CoordinatesFromPosition(chunkBounds.MinPoint);
-            Coordinates maxCoordinates = _coordinatePositionService.CoordinatesFromPosition(chunkBounds.MaxPoint);
-            Bounds<Coordinates> areaBounds = Bounds<Coordinates>.of(minCoordinates, maxCoordinates);
+            _chunkUpdateBufferService.AddToBuffer(new List<ChunkUpdate>()
+            {
+                new ChunkUpdate(location, ChunkUpdate.Type.LOADING)
+            });
+            //FIXME: hardcoded size
+            float[,] heightmap = new float[65,65];
+            Bounds<Vector3> chunkBounds = Bounds<Vector3>.of(Vector3.zero, Vector3.zero);
+            List<StructureWithVertices> structureVertexData = new List<StructureWithVertices>();
+            List<WayWithVertices> wayVertexData = new List<WayWithVertices>();
+            ThreadedActionService.ExecuteAsynchronously(() =>
+            {
+                chunkBounds = ChunkHelper.GetChunkBounds(location.X, location.Y,
+                    _configurationService.GetInt(ConfigurationKeyInt.CHUNK_SIZE_METERS));
+                Coordinates minCoordinates = _coordinatePositionService.CoordinatesFromPosition(chunkBounds.MinPoint);
+                Coordinates maxCoordinates = _coordinatePositionService.CoordinatesFromPosition(chunkBounds.MaxPoint);
+                Bounds<Coordinates> areaBounds = Bounds<Coordinates>.of(minCoordinates, maxCoordinates);
 
-            var heightmap = _heightmapService.GetHeightmapMatrix(areaBounds);
-            var osmData = _osmDataService.GetDataForArea(areaBounds);
-            var parsedData = _osmParserService.Parse(osmData);
-            var structureVertexData = StructureVertexHelper.GetStructuresWithVertices(parsedData);
-            var wayVertexData = WayVertexHelper.GetWaysWithVertices(parsedData, chunkBounds);
-            
-            var terrain = TerrainInstantiator.InstantiateTerrain(heightmap, location, chunkBounds,
-                terrainMaterial, _terrainParentObject, _chunks);
-            var heightService = new TerrainHeightService(terrain);
-            WorldObjects worldObjects = WorldObjectsInstantiator.InstantiateWorldObjects(structureVertexData,
-                wayVertexData, location, structurePrefab, roadPrefab, heightService, _mapDataParentObject);
+                heightmap = _heightmapService.GetHeightmapMatrix(areaBounds);
+                var osmData = _osmDataService.GetDataForArea(areaBounds);
+                var parsedData = _osmParserService.Parse(osmData);
+                structureVertexData = StructureVertexHelper.GetStructuresWithVertices(parsedData);
+                wayVertexData = WayVertexHelper.GetWaysWithVertices(parsedData, chunkBounds);
+            }, () =>
+            {
+                var terrain = TerrainInstantiator.InstantiateTerrain(heightmap, location, chunkBounds,
+                    terrainMaterial, _terrainParentObject, _chunks);
+                var heightService = new TerrainHeightService(terrain);
+                WorldObjects worldObjects = WorldObjectsInstantiator.InstantiateWorldObjects(structureVertexData,
+                    wayVertexData, location, structurePrefab, roadPrefab, heightService, _mapDataParentObject);
 
-            var chunk = new Chunk(location, terrain, worldObjects);
-            _chunks.Add(chunk);
+                var chunk = new Chunk(location, terrain, worldObjects);
+                _chunks.Add(chunk);
+                _chunkUpdateBufferService.FinishLoading(location);
+            }, EnqueueAsyncResult);
         }
 
         private void DeleteChunk(Int2 location)
@@ -148,6 +167,11 @@ namespace Managers
             }
 
             _chunks.Remove(oldChunk);
+        }
+        
+        private void EnqueueAsyncResult(Action resultProcessor)
+        {
+            _asyncResultProcessors.Enqueue(resultProcessor);
         }
     }
 }
