@@ -1,4 +1,5 @@
 using Domain;
+using RoadArchitect;
 using UnityEngine;
 using Utility;
 
@@ -43,17 +44,21 @@ namespace Services
             var terrainObject = new GameObject(name);
             terrainObject.transform.position = position;
             terrainObject.layer = _config.GetInt(ConfigurationKeyInt.TERRAIN_LAYER);
+            var size = _config.GetInt(ConfigurationKeyInt.CHUNK_SIZE_METERS);
 
             TerrainData terrainData = new TerrainData();
             terrainData.heightmapResolution = heightmap.GetLength(0);
             terrainData.baseMapResolution = _baseMapResolution;
             terrainData.SetDetailResolution(_detailResolution, _resolutionPerPatch);
             terrainData.size =
-                new Vector3(_config.GetInt(ConfigurationKeyInt.CHUNK_SIZE_METERS), 8848f, _config.GetInt(ConfigurationKeyInt.CHUNK_SIZE_METERS));
+                new Vector3(size, 8848f, size);
             terrainData.SetHeights(0, 0, heightmap);
 
             TerrainCollider terrainCollider = terrainObject.AddComponent<TerrainCollider>();
             Terrain terrain = terrainObject.AddComponent<Terrain>();
+            GSDTerrain gsdTerrain = terrainObject.AddComponent<GSDTerrain>();
+            gsdTerrain.SplatResoWidth = size;
+            gsdTerrain.SplatResoHeight = size;
             terrain.allowAutoConnect = true;
             terrain.materialTemplate = _material;
 

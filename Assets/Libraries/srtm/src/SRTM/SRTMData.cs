@@ -146,7 +146,7 @@ namespace SRTM
                 }
             }
 
-            var dataCell = DataCells.Where(dc => dc.Latitude == cellLatitude && dc.Longitude == cellLongitude).FirstOrDefault();
+            var dataCell = DataCells?.FirstOrDefault(dc => dc.Latitude == cellLatitude && dc.Longitude == cellLongitude);
             if (dataCell != null)
             {
                 return dataCell;

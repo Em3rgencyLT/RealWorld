@@ -22,47 +22,10 @@ namespace Utility
                 mapElement.References
                     .ForEach(reference => { waypoints.Add(mapElements[reference].CoordinatesWithPosition); });
                 List<WayNodes> segments = GetRoadSegments(waypoints, terrainBounds);
-                float width = Road.GuessRoadWidth(mapElement.Data[MapNodeKey.KeyType.Highway]);
-                
+
                 segments.ForEach(waySegment =>
                 {
-                    List<Vector3> leftVerticePositions = new List<Vector3>();
-                    List<Vector3> rightVerticePositions = new List<Vector3>();
-                    List<Vector3> nodes = waySegment.Nodes;
-                    int length = nodes.Count;
-
-                    for (int i = 0; i < length; i++)
-                    {
-                        Vector3 forward = Vector3.zero;
-                        if (i < length - 1)
-                        {
-                            forward += nodes[i + 1] - nodes[i];
-                        }
-
-                        if (i > 0)
-                        {
-                            forward += nodes[i] - nodes[i - 1];
-                        }
-                        forward.Normalize();
-                        
-                        Vector3 position = new Vector3(nodes[i].x, nodes[i].y, nodes[i].z);
-                        if (i == 0)
-                        {
-                            position -= forward * width / 10;
-                        }
-
-                        if (i == length - 1)
-                        {
-                            position += forward * width / 10;
-                        }
-                        
-                        Vector3 leftDirection = new Vector3(-forward.z, 0f, forward.x);
-                        Vector3 leftVertex = position + leftDirection * width;
-                        Vector3 rightVertex = position - leftDirection * width;
-                        leftVerticePositions.Add(leftVertex);
-                        rightVerticePositions.Add(rightVertex);
-                    }
-                    var wayWithVertices = new WayWithVertices(mapElement, leftVerticePositions, rightVerticePositions);
+                    var wayWithVertices = new WayWithVertices(mapElement, waySegment.Nodes);
                     waysWithVertices.Add(wayWithVertices);
                 }); 
             }

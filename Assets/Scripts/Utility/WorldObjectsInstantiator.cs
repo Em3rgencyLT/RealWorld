@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Domain;
 using Domain.Tuples;
+using RoadArchitect;
 using Services;
 using UnityEngine;
 
@@ -8,7 +9,7 @@ namespace Utility
 {
     public static class WorldObjectsInstantiator
     {
-        public static WorldObjects InstantiateWorldObjects(List<StructureWithVertices> structureVertexData, List<WayWithVertices> wayVertexData, Int2 location, GameObject structurePrefab, GameObject roadPrefab, TerrainHeightService heightService, GameObject mapDataParentObject)
+        public static WorldObjects InstantiateWorldObjects(List<StructureWithVertices> structureVertexData, List<WayWithVertices> wayVertexData, Int2 location, GameObject structurePrefab, GameObject roadPrefab, TerrainHeightService heightService, GameObject mapDataParentObject, GSDRoadSystem gsdRoadSystem)
         {
             var mapObjects = new List<MapObject>();
             var chunkParent = new GameObject($"WorldObjects X:{location.X} Y:{location.Y}");
@@ -28,20 +29,18 @@ namespace Utility
             }
             foreach (WayWithVertices wayWithVertices in wayVertexData)
             {
-                if (wayWithVertices.LeftVertices.Count <= 1 || wayWithVertices.RightVertices.Count <= 1 ||
-                    wayWithVertices.LeftVertices.Count != wayWithVertices.RightVertices.Count)
-                {
-                    continue;
-                }
+                if (wayWithVertices.SplineVertices.Count <= 1) continue;
 
                 //TODO: ways can also be rivers and fuck knows what else. Need support for all of that too.
-                GameObject wayObject = GameObject.Instantiate(roadPrefab, chunkParent.transform);
                 MapElement mapElement = wayWithVertices.MapElement;
-                wayObject.name = string.IsNullOrWhiteSpace(mapElement.GetRoadName())
-                        ? "Road"
-                        : mapElement.GetRoadName();
-                Road roadScript = wayObject.GetComponent<Road>();
-                roadScript.Build(heightService, mapElement, wayWithVertices.LeftVertices, wayWithVertices.RightVertices);
+                string name = string.IsNullOrWhiteSpace(mapElement.GetRoadName())
+                    ? "Road"
+                    : mapElement.GetRoadName();
+                GameObject roadObject = gsdRoadSystem.AddRoad(false, name);
+                roadObject.transform.position = wayWithVertices.SplineVertices[0];
+                Road roadScript = roadObject.AddComponent<Road>();
+                
+                roadScript.Build(heightService, mapElement, wayWithVertices.SplineVertices);
                 mapObjects.Add(roadScript);
             }
             

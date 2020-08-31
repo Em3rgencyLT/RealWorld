@@ -4,8 +4,10 @@ using System.Globalization;
 using System.Linq;
 using Domain;
 using Domain.Tuples;
+using RoadArchitect;
 using Services;
 using UnityEngine;
+using UnityEngine.Serialization;
 using Utility;
 
 namespace Managers
@@ -19,10 +21,11 @@ namespace Managers
         [SerializeField] private double locationLatitude = 54.899737;
         [SerializeField] private double locationLongitude = 23.900396;
         [SerializeField] private Material terrainMaterial = null;
+        [SerializeField] private GSDRoadSystem gsdRoadSystem = null;
 
         [SerializeField] private GameObject structurePrefab = null;
         [SerializeField] private GameObject roadPrefab = null;
-        [SerializeField] private PlayerSpawner _playerSpawner = null;
+        [SerializeField] private PlayerSpawner playerSpawner = null;
         private GameObject _mapDataParentObject;
         private GameObject _terrainParentObject;
         private GameObject _playerObject;
@@ -67,7 +70,7 @@ namespace Managers
                     $"Road Prefab cannot be null! Please set in inspector of {name}!");
             }
 
-            if (_playerSpawner == null)
+            if (playerSpawner == null)
             {
                 throw new ArgumentException(
                     $"Player Spawner cannot be null! Please set in inspector of {name}!");
@@ -78,7 +81,7 @@ namespace Managers
         {
             var centerCoordinates = Coordinates.of(locationLatitude, locationLongitude);
             var playerPosition = _coordinatePositionService.GetCoordinatesWithPosition(centerCoordinates, 300).Position;
-            _playerObject = _playerSpawner.SpawnPlayer(playerPosition);
+            _playerObject = playerSpawner.SpawnPlayer(playerPosition);
             _playerChunkService = new PlayerChunkService(_playerObject,
                 _configurationService.GetInt(ConfigurationKeyInt.CHUNK_SIZE_METERS),
                 _configurationService.GetInt(ConfigurationKeyInt.CHUNK_UNIT_RADIUS));
@@ -147,7 +150,7 @@ namespace Managers
                     terrainMaterial, _terrainParentObject, _chunks);
                 var heightService = new TerrainHeightService(terrain);
                 WorldObjects worldObjects = WorldObjectsInstantiator.InstantiateWorldObjects(structureVertexData,
-                    wayVertexData, location, structurePrefab, roadPrefab, heightService, _mapDataParentObject);
+                    wayVertexData, location, structurePrefab, roadPrefab, heightService, _mapDataParentObject, gsdRoadSystem);
 
                 var chunk = new Chunk(location, terrain, worldObjects);
                 _chunks.Add(chunk);

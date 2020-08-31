@@ -6,20 +6,16 @@ namespace Domain.Tuples
     public class WayWithVertices
     {
         private MapElement _mapElement;
-        private List<Vector3> _leftVertices;
-        private List<Vector3> _rightVertices;
+        private List<Vector3> _splineVertices;
 
-        public WayWithVertices(MapElement mapElement, List<Vector3> leftVertices, List<Vector3> rightVertices)
+        public WayWithVertices(MapElement mapElement, List<Vector3> splineVertices)
         {
             _mapElement = mapElement;
-            _leftVertices = leftVertices;
-            _rightVertices = rightVertices;
+            _splineVertices = splineVertices;
         }
 
         public MapElement MapElement => _mapElement;
 
-        public List<Vector3> LeftVertices => _leftVertices;
-
-        public List<Vector3> RightVertices => _rightVertices;
+        public List<Vector3> SplineVertices => _splineVertices;
     }
 }
